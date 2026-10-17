@@ -1,0 +1,5 @@
+Meet Clipse: understand a YouTube video before you watch.
+
+Turn captions into a clear summary, revisit key takeaways with timestamps, and keep a searchable library in Chrome's side panel. Twenty editable categories tailor what each summary preserves, from recipes to research.
+
+Requires your own OpenAI API key and available API credit. Works from readable captions; visual demonstrations are not analyzed. Example content shown. AI summaries may contain errors.

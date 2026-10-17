@@ -1,0 +1,24 @@
+# Historical working copies stay on disk, outside the active project.
+/video-preview-extension*/
+
+# Generated files and local tooling.
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.log
+.venv/
+venv/
+__pycache__/
+
+# Local credentials and private history exports.
+.env
+.env.*
+!.env.example
+*-history-*.json
+.wrangler/
+.openai/
+
+# The website's dist directory is its maintained static source.
+!/website/dist/
+!/website/dist/**

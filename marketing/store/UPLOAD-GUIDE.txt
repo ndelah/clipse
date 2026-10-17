@@ -1,0 +1,23 @@
+CLIPSE — CHROME WEB STORE UPLOAD ASSETS
+
+Name: Clipse
+Language: English
+Suggested category: Productivity (choose the matching category offered by the dashboard)
+
+Detailed description: description.txt
+Short description: short-description.txt (also set in the extension manifest)
+Store icon: icon-128.png
+Screenshots: all five JPEGs in screenshots/, in filename order
+Small promo tile: tiles/small-promo-440x280.jpg
+Marquee promo tile: tiles/marquee-promo-1400x560.jpg
+Promo video: upload clipse-promo-1080p.mp4 to YouTube and paste its URL into the store listing
+Suggested YouTube title: Clipse — Understand a YouTube video before you watch
+Suggested YouTube description: video-description.txt
+Optional video thumbnail: video-poster.png
+
+The extension upload ZIP is clipse-0.8.2.zip and is separate from this media bundle.
+Do not upload the media bundle as the extension package.
+
+The screenshots show the actual Clipse interface with labeled synthetic examples.
+An OpenAI API key and available API credit are required for real summaries.
+The publishing workflow still needs your publisher details and any required support, privacy-policy, and disclosure fields.

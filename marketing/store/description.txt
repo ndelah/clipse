@@ -1,0 +1,25 @@
+Understand a YouTube video before you watch.
+
+Clipse turns YouTube captions into a clear summary, key takeaways, and timestamps you can revisit. Get the main point, decide what deserves your time, and jump back to the moments that matter.
+
+SUMMARIZE WHERE YOU WATCH
+Click the Clipse logo inside the YouTube player, or hover over a video thumbnail and choose Summarize. Read the result in Chrome's side panel while keeping your place on YouTube.
+
+KEEP WHAT MATTERS
+Get a quick overview or a fuller summary, with key takeaways linked to useful moments in the video. Clipse works from the available captions, so it does not analyze visual demonstrations or details shown only on screen.
+
+A SUMMARY THAT FITS THE VIDEO
+Clipse includes 20 editable video categories, plus an Other fallback. Recipes preserve stated ingredients, quantities, temperatures, and cooking times. Tutorials keep prerequisites and ordered steps. Reviews retain strengths, weaknesses, and tradeoffs. Interviews preserve speakers' viewpoints and qualifications. Customize each category's definition and summary instructions in Settings.
+
+BUILD YOUR OWN REFERENCE LIBRARY
+Summaries are saved in this Chrome profile. Search your history, reopen a summary, copy it as Markdown, or export and import a JSON backup. Choose your preferred caption language, summary language, and summary length.
+
+BRING YOUR OWN OPENAI API KEY
+An OpenAI API key with model access and available API credit is required. API usage is billed separately by OpenAI; a ChatGPT subscription does not provide API credit. OpenAI handles classification by default. You can optionally connect a separate TypeSafe key to use Jev for classification; OpenAI still writes the summaries.
+
+YOUR DATA
+Your keys and summary history are stored locally in your Chrome profile. Captions and video metadata are sent to OpenAI for processing. If you enable Jev, caption excerpts and video metadata are also sent to TypeSafe. Keys are excluded from history backups.
+
+Clipse requires readable captions. Caption availability and YouTube compatibility can vary. AI summaries may contain errors; check important details against the source video.
+
+Clipse is an independent extension and is not affiliated with YouTube, Google, OpenAI, or TypeSafe.

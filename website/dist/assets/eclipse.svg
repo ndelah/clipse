@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Eclipse logo</title>
+  <desc id="desc">A black celestial disc with a transparent play symbol beside a separated black crescent.</desc>
+  <g fill="#000000">
+    <path fill-rule="evenodd" d="M338 256a148 148 0 1 1-296 0 148 148 0 1 1 296 0Z M224 199 Q224 186 235 193 L316 244 Q335 256 316 268 L235 319 Q224 326 224 313Z"/>
+    <path d="M285.943 96.619 A160 160 0 1 1 285.943 415.381 A184 184 0 0 0 285.943 96.619Z"/>
+  </g>
+</svg>

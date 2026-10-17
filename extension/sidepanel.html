@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Clipse</title><link rel="stylesheet" href="sidepanel.css"><link rel="stylesheet" href="settings.css"><link rel="stylesheet" href="library.css"><link rel="stylesheet" href="summary.css"></head>
+<body>
+  <header class="topbar"><img class="brand-mark" src="assets/eclipse.svg" alt="" width="28" height="28"><h1>Clipse</h1><button id="settingsButton" class="text-button header-settings" aria-label="Open settings">Settings</button></header>
+  <p id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+
+  <main>
+    <section id="currentView" class="hidden" aria-label="Video summary">
+      <div id="savedNavigation" class="reading-navigation hidden"><button id="backToHistoryButton" class="text-button">← History</button></div>
+      <section id="loadingState" class="state progress-card hidden" aria-labelledby="jobStage">
+        <div class="state-symbol" aria-hidden="true"><div class="spinner"></div></div>
+        <p class="state-eyebrow">A summary in the making</p><h2 id="jobStage" tabindex="-1">Reading captions</h2><p id="jobVideoTitle" class="muted state-video-title"></p>
+        <div id="jobProgress" class="progress-track" aria-hidden="true"><div id="progressBar" class="progress-bar"></div></div><p id="progressText" class="muted small"></p><p id="jobHint" class="muted"></p><button id="stopJobButton" class="secondary-button stop-button">Stop summary</button>
+      </section>
+      <section id="errorState" class="state recovery-card hidden" aria-labelledby="errorHeading">
+        <div class="state-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M7 10h3m4 0h3m-10 4h7"/></svg></div>
+        <p id="errorVideoTitle" class="state-video-title muted"></p><h2 id="errorHeading" tabindex="-1">Could not create summary</h2><p id="errorMessage" role="alert"></p>
+        <div class="button-row recovery-actions"><button id="retryButton" class="primary-button">Restart summary</button><button id="reloadVideoButton" class="primary-button hidden">Reload video</button><button id="errorSettingsButton" class="secondary-button hidden">Open settings</button><button id="discardErrorButton" class="text-button discard-error hidden">Discard error</button></div>
+        <details id="errorDetails" class="diagnostic-details"><summary>Technical details</summary><p id="errorDiagnostic" class="muted small"></p></details>
+      </section>
+      <article id="resultState" class="hidden">
+        <p id="sampleNotice" class="sample-notice hidden">Sample summary · illustrative content, not generated from this video.</p>
+        <header class="result-header summary-card">
+          <h2 class="result-title"><a id="videoTitleLink" class="result-title-link" target="_blank" rel="noreferrer"></a></h2>
+          <div class="result-context">
+            <div class="result-subline"><span id="resultChannel"></span><span id="resultDuration"></span><a id="videoLink" class="youtube-link" target="_blank" rel="noreferrer" aria-label="Open video on YouTube" title="Open video on YouTube"><img src="icons/youtube.svg" width="28" height="20" alt=""></a></div>
+            <div class="result-toolbar" role="group" aria-label="Summary actions">
+              <button id="copySummaryButton" class="icon-button" type="button" aria-label="Copy summary" title="Copy summary"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg></button>
+              <button id="exportMarkdownButton" class="icon-button" type="button" aria-label="Download Markdown" title="Download Markdown"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg></button>
+            </div>
+          </div>
+          <p id="resultStatus" class="status-message muted" role="status"></p>
+          <p id="oneSentenceSummary" class="lead-summary"></p>
+          <p id="worthWatching" class="recommendation"></p>
+        </header>
+        <details id="takeawaysSection" class="summary-card" aria-labelledby="takeawaysHeading"><summary><h2 id="takeawaysHeading" class="summary-card-heading"><span class="summary-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 7 2 2 4-4m3 2h7M4 16l2 2 4-4m3 2h7"/></svg></span><span class="section-label">Key takeaways</span></h2></summary><div id="keyTakeaways"></div></details>
+        <div class="summary-details">
+          <details id="fullSummarySection"><summary>Full summary</summary><div id="fullSummary" class="full-summary"></div></details>
+          <details id="aboutVideo"><summary>About this video</summary><p id="transcriptInfo" class="provenance muted small"></p><div class="meta-row" aria-label="AI estimates"><span id="contentType" class="pill"></span><span id="level" class="pill"></span><span id="density" class="pill"></span><span id="specificity" class="pill hidden"></span></div><p id="classificationNote" class="muted small"></p><p class="muted small">Difficulty estimates assumed knowledge. Information density estimates how much of the video adds substance. Instruction specificity describes how concrete its guidance is. These are AI estimates, independent of your experience.</p><p class="muted small">Based on captions, which may contain errors. Visual demonstrations are not analyzed.</p></details>
+        </div>
+        <footer id="resultFooter"><span>In your history</span><button id="refreshButton" class="text-button">Regenerate</button></footer>
+      </article>
+    </section>
+    <section id="onboardingView" class="onboarding hidden" aria-labelledby="onboardingIntroHeading" aria-roledescription="carousel">
+      <nav class="onboarding-pagination" aria-label="Welcome pages">
+        <button id="onboardingIntroButton" class="onboarding-page-button" type="button" aria-current="step" aria-controls="onboardingIntroSlide">1 · How it works</button>
+        <button id="onboardingSetupButton" class="onboarding-page-button" type="button" aria-controls="onboardingSetupSlide">2 · Get set up</button>
+      </nav>
+      <div id="onboardingIntroSlide" role="group" aria-roledescription="slide" aria-label="1 of 2: How it works">
+        <div class="onboarding-intro">
+          <p class="eyebrow">Less watching. More knowing.</p>
+          <h2 id="onboardingIntroHeading" tabindex="-1">One click.<br>The whole picture.</h2>
+          <p class="onboarding-description">Click Clipse on YouTube to turn a video’s captions into a summary, key takeaways, and timestamps.</p>
+        </div>
+        <div class="onboarding-examples">
+          <div class="onboarding-example">
+            <div class="onboarding-demo demo-player" aria-hidden="true">
+              <span class="demo-play">▶</span>
+              <div class="demo-player-controls"><span>▶</span><span class="demo-timeline"></span><span class="demo-clipse-player"><img src="assets/eclipse.svg" width="20" height="20" alt=""></span><span>⛶</span></div>
+            </div>
+            <strong>Inside the video player</strong><p>Open a video and click the Clipse logo in the player controls.</p>
+          </div>
+          <div class="onboarding-example">
+            <div class="onboarding-demo demo-thumbnail" aria-hidden="true">
+              <span class="demo-clipse-thumbnail"><img src="assets/eclipse.svg" width="16" height="16" alt="">Summarize</span><span class="demo-play">▶</span><span class="demo-duration">12:34</span>
+            </div>
+            <strong>Right on a thumbnail</strong><p>Hover over a video thumbnail and click <b>Summarize</b>. No need to open the video.</p>
+          </div>
+        </div>
+        <p class="onboarding-history-note muted">Your summaries appear in Clipse’s History. Open one to read it or jump to a useful moment in the video.</p>
+        <div class="onboarding-actions"><button id="onboardingNextButton" class="primary-button">Continue <span aria-hidden="true">→</span></button><button id="skipIntroButton" class="text-button">Skip for now</button></div>
+      </div>
+      <div id="onboardingSetupSlide" class="hidden" role="group" aria-roledescription="slide" aria-label="2 of 2: Get set up">
+      <div class="onboarding-intro">
+        <p class="eyebrow">Welcome to Clipse</p>
+        <h2 id="onboardingHeading" tabindex="-1">Understand a video<br>before you watch.</h2>
+        <p class="onboarding-description">The main point, the moments that matter, and a deeper summary. Straight from YouTube captions.</p>
+      </div>
+      <ol class="onboarding-steps">
+        <li><span class="step-number" aria-hidden="true">1</span><div><strong>Bring your own API key</strong><p>Connect OpenAI to create summaries. Jev is optional for video classification.</p></div></li>
+        <li><span class="step-number" aria-hidden="true">2</span><div><strong>Find a video. Click Clipse.</strong><p>Use Clipse in the video player or on a thumbnail. Your summary will be saved here.</p></div></li>
+      </ol>
+      <div class="onboarding-actions"><button id="setupButton" class="primary-button">Set up Clipse <span aria-hidden="true">→</span></button><button id="dismissOnboardingButton" class="text-button">Skip for now</button></div>
+      <section class="onboarding-faq" aria-labelledby="faqHeading">
+        <h3 id="faqHeading">A few things to know</h3>
+        <details><summary>What’s an API, and why do I need a key?</summary><div class="faq-answer"><p>An API lets Clipse ask an AI service to process a video’s captions. Your API key connects those requests to your account.</p><p>Clipse is free to use, but AI processing can cost money. I don’t cover users’ API costs, so you bring your own key and pay the provider directly. A ChatGPT subscription doesn’t include OpenAI API usage.</p></div></details>
+        <details><summary>How do I connect OpenAI?</summary><div class="faq-answer"><ol><li>Sign in to the <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">OpenAI API platform ↗</a> and create a secret key.</li><li>Set up <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noreferrer">API billing ↗</a> and make sure you have available credit.</li><li>Open Clipse’s Settings, paste it into <strong>OpenAI API key</strong>, and choose <strong>Save settings</strong>.</li></ol><p>Clipse checks key and model access before saving a new key. This check cannot verify your credit balance.</p></div></details>
+        <details><summary>How do I connect Jev?</summary><div class="faq-answer"><p>Jev, by TypeSafe, is optional. It classifies videos; OpenAI still writes the summaries. You can use Clipse with just an OpenAI key.</p><ol><li>Sign in to the <a href="https://console.typesafe.ai/" target="_blank" rel="noreferrer">TypeSafe console ↗</a> and create an API key. Set up any billing or access required by TypeSafe.</li><li>In Clipse’s Settings, set <strong>Video classification</strong> to <strong>Jev · TypeSafe</strong>.</li><li>Paste your key into <strong>TypeSafe API key</strong> and choose <strong>Save settings</strong>.</li></ol></div></details>
+        <details><summary>Is my data safe?</summary><div class="faq-answer"><p>Your API keys, settings, and summary history stay locally in this Chrome profile. Clipse has no developer server or analytics: I can’t see your keys, videos, or summaries.</p><p>To create a summary, captions and video metadata go directly to OpenAI. If you select Jev, caption excerpts and metadata also go to TypeSafe. These providers process that data under their own policies; the AI processing isn’t local.</p><p>Keys are only sent to their respective provider and are excluded from history backups.</p></div></details>
+      </section>
+      </div>
+      <p id="onboardingStatus" class="status-message muted" role="status"></p>
+    </section>
+    <section id="historyView" class="hidden" aria-labelledby="historyHeading">
+      <div class="library-heading"><div><h2 id="historyHeading">History</h2><p>Your videos, distilled.</p></div><span id="historyCount" class="library-count" role="status" aria-live="polite"></span></div>
+      <label class="sr-only" for="historySearch">Search history</label><div class="library-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="historySearch" type="search" placeholder="Search your videos" aria-controls="historyList"></div>
+      <div class="undo-row library-notice"><p id="historyStatus" class="status-message muted" role="status"></p><button id="undoHistoryButton" class="text-button hidden">Undo deletion</button></div>
+      <div id="historyList"></div><p id="emptyHistory" class="muted hidden">Your summarized videos will appear here.</p>
+    </section>
+    <section id="settingsView" class="settings-shell hidden" aria-labelledby="settingsHeading">
+      <div class="settings-page-heading"><div><h2 id="settingsHeading" tabindex="-1">Settings</h2><p>Make Clipse work your way.</p></div><button id="settingsDoneButton" class="secondary-button compact" type="button">Done</button></div>
+      <div id="settingsForm" class="settings-form">
+        <section class="settings-card" aria-labelledby="connectionHeading">
+          <div class="settings-card-heading"><span class="settings-symbol"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg></span><h3 id="connectionHeading">AI connection</h3><span id="connectionState" class="connection-state">Not set up</span></div>
+          <p class="settings-description">Connect OpenAI to turn captions into summaries.</p>
+          <div class="settings-field"><div class="settings-label-row"><label for="apiKey">OpenAI API key</label><a class="settings-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">Get a key <span aria-hidden="true">↗</span></a></div>
+            <div class="secret-row"><input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" aria-describedby="apiKeyHelp"><button id="toggleKeyButton" class="secondary-button compact" type="button" aria-label="Show API key" aria-pressed="false">Show</button></div>
+            <p id="apiKeyHelp" class="settings-help">Stored in this Chrome profile. API usage is billed to your OpenAI account.</p>
+          </div>
+          <div class="connection-tools"><button id="validateKeyButton" class="secondary-button compact" type="button">Test connection</button><span class="settings-help">Checks access without creating a summary.</span></div>
+          <details id="advancedSettings" class="model-disclosure"><summary>Model settings</summary><div class="settings-field"><label for="model">OpenAI model</label><input id="model" type="text" placeholder="gpt-4.1-mini" spellcheck="false" aria-describedby="modelHelp"><p id="modelHelp" class="settings-help">Use a model available to your OpenAI project. Leave the default if you’re unsure.</p></div></details>
+        </section>
+
+        <section class="settings-card" aria-labelledby="preferencesHeading">
+          <div class="settings-card-heading"><span class="settings-symbol"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--surface)"/><circle cx="15" cy="17" r="3" fill="var(--surface)"/></svg></span><h3 id="preferencesHeading">Your summaries</h3></div>
+          <p class="settings-description">The language and level of detail that suit you.</p>
+          <div class="settings-field"><label for="summaryLength">Summary length</label><select id="summaryLength" aria-describedby="summaryLengthHelp"><option value="brief">Brief · the essentials</option><option value="detailed">Detailed · more context</option></select><p id="summaryLengthHelp" class="settings-help">Choose a quick overview or a fuller explanation.</p></div>
+          <div class="settings-language-grid">
+            <div class="settings-field"><label for="outputLanguage">Summary language</label><input id="outputLanguage" type="text" list="outputLanguages" maxlength="80" placeholder="Same as captions" aria-describedby="outputLanguageHelp"><datalist id="outputLanguages"></datalist><p id="outputLanguageHelp" class="settings-help">Choose a suggestion or type any language.</p></div>
+            <div class="settings-field"><label for="captionLanguage">Caption language</label><select id="captionLanguage" aria-describedby="languageHelp"><option value="auto">Best available</option></select><p id="languageHelp" class="settings-help">Options come from the active YouTube video.</p></div>
+          </div>
+          <p class="settings-note">Applies to new summaries. Regenerate a saved summary to update it.</p>
+        </section>
+
+        <div class="settings-advanced-group">
+          <details id="categoriesSettings" class="settings-disclosure"><summary><span><strong>Summary categories</strong><span class="settings-summary-help">Tailor what each kind of video keeps.</span></span></summary><div class="settings-disclosure-body"><p class="settings-help">Edit the category definitions and what their summaries should preserve. Changes apply after saving, to new or regenerated summaries.</p><div id="categoryList"></div><button id="addCategoryButton" class="secondary-button compact" type="button">+ Add category</button></div></details>
+          <details id="classificationSettings" class="settings-disclosure"><summary><span><strong>Video classification</strong><span class="settings-summary-help">Uses OpenAI by default. Jev is optional.</span></span></summary><div class="settings-disclosure-body"><div class="settings-field"><label for="classifierProvider">Classification provider</label><select id="classifierProvider" aria-describedby="classificationHelp"><option value="openai">OpenAI · use my existing key</option><option value="jev">Jev · TypeSafe</option></select><p id="classificationHelp" class="settings-help">Identifies the category, assumed knowledge, information density, and instruction specificity before summarizing.</p></div><div id="jevSettings" class="provider-settings hidden"><div class="settings-field"><div class="settings-label-row"><label for="jevApiKey">TypeSafe API key</label><a class="settings-link" href="https://console.typesafe.ai/" target="_blank" rel="noreferrer">Get a key <span aria-hidden="true">↗</span></a></div><div class="secret-row"><input id="jevApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your TypeSafe key" aria-describedby="jevHelp"><button id="toggleJevKeyButton" class="secondary-button compact" type="button" aria-label="Show TypeSafe API key" aria-pressed="false">Show</button></div><p id="jevHelp" class="settings-help">Caption excerpts and video metadata also go to TypeSafe. OpenAI still writes the summary.</p></div></div></div></details>
+          <details class="settings-disclosure"><summary><span><strong>Privacy &amp; API costs</strong><span class="settings-summary-help">What stays here, and what goes to AI.</span></span></summary><div class="settings-disclosure-body settings-privacy"><p>Your keys and history stay in this Chrome profile. Keys are excluded from history backups.</p><p>Captions and video metadata go directly to OpenAI for processing. With Jev selected, excerpts and metadata also go to TypeSafe. AI processing happens at these providers.</p><p>Summary requests use your API credit. Longer videos may need several paid requests. A connection check verifies key and model access, but cannot check your available credit.</p></div></details>
+        </div>
+      </div>
+
+      <section id="historyManagement" class="settings-card settings-history" aria-labelledby="historyManagementHeading">
+        <div class="settings-card-heading"><h3 id="historyManagementHeading">History &amp; backups</h3></div><p class="settings-description">Keep a copy of the summaries you’ve collected.</p>
+        <div class="history-tools"><button id="exportHistoryButton" class="secondary-button compact" type="button">Back up history</button><button id="importHistoryButton" class="secondary-button compact" type="button">Restore backup</button><input id="importHistoryInput" class="hidden" type="file" accept="application/json,.json"></div>
+        <p class="settings-help">JSON backups include summaries and source excerpts. Keys and settings are excluded.</p>
+        <div class="undo-row"><p id="historyManagementStatus" class="status-message muted" role="status" aria-live="polite"></p><button id="undoManagedHistoryButton" class="text-button hidden" type="button">Undo deletion</button></div>
+        <div class="settings-danger-row"><span class="settings-help">Start fresh with an empty history.</span><button id="clearHistoryButton" class="text-button danger-text" type="button">Clear all history…</button></div>
+        <div id="clearConfirmation" class="confirmation hidden" role="group" aria-label="Confirm clearing history"><p id="clearHistoryMessage"></p><div class="button-row"><button id="confirmClearButton" class="secondary-button danger-text" type="button">Delete all summaries</button><button id="cancelClearButton" class="secondary-button" type="button">Keep history</button></div></div>
+      </section>
+      <div class="settings-guide"><span class="settings-help">Need a hand getting started?</span><button id="onboardingHelpButton" class="text-button" type="button">Welcome guide &amp; FAQ <span aria-hidden="true">↗</span></button></div>
+
+      <div class="settings-save-bar"><div class="settings-save-content"><p id="settingsStatus" class="status-message muted" role="status" aria-live="polite" aria-atomic="true">Your preferences, saved in this browser.</p><button id="saveSettingsButton" class="primary-button" type="button">Save settings</button></div></div>
+
+    </section>
+  </main><script type="module" src="sidepanel.js"></script>
+</body></html>

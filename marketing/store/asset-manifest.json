@@ -1,0 +1,101 @@
+{
+  "assets": [
+    {
+      "file": "icon-128.png",
+      "width": 128,
+      "height": 128,
+      "format": "png",
+      "alpha": true
+    },
+    {
+      "file": "screenshots/01-overview.jpg",
+      "width": 1280,
+      "height": 800,
+      "format": "jpeg",
+      "alpha": false
+    },
+    {
+      "file": "screenshots/02-timestamps.jpg",
+      "width": 1280,
+      "height": 800,
+      "format": "jpeg",
+      "alpha": false
+    },
+    {
+      "file": "screenshots/03-recipes.jpg",
+      "width": 1280,
+      "height": 800,
+      "format": "jpeg",
+      "alpha": false
+    },
+    {
+      "file": "screenshots/04-history.jpg",
+      "width": 1280,
+      "height": 800,
+      "format": "jpeg",
+      "alpha": false
+    },
+    {
+      "file": "screenshots/05-categories.jpg",
+      "width": 1280,
+      "height": 800,
+      "format": "jpeg",
+      "alpha": false
+    },
+    {
+      "file": "tiles/small-promo-440x280.jpg",
+      "width": 440,
+      "height": 280,
+      "format": "jpeg",
+      "alpha": false
+    },
+    {
+      "file": "tiles/marquee-promo-1400x560.jpg",
+      "width": 1400,
+      "height": 560,
+      "format": "jpeg",
+      "alpha": false
+    }
+  ],
+  "iconBounds": [
+    16,
+    16,
+    111,
+    111
+  ],
+  "shortDescriptionLength": 117,
+  "video": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "30/1",
+        "side_data_list": [
+          {}
+        ]
+      },
+      {
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "sample_rate": "48000",
+        "channels": 2,
+        "r_frame_rate": "0/0"
+      }
+    ],
+    "format": {
+      "duration": "33.000000",
+      "size": "4006612"
+    }
+  },
+  "validation": {
+    "imageDimensions": "passed",
+    "iconPadding": "passed",
+    "videoCodecsAndDuration": "passed",
+    "visualReview": "All five screenshots, both promo tiles, icon, and representative frames from the rendered video inspected.",
+    "exampleContent": "Actual extension UI with explicitly labeled synthetic summaries."
+  }
+}

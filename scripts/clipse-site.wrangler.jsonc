@@ -1,0 +1,25 @@
+{
+  "name": "clipse-website",
+  "account_id": "e47001e832db1088de09ca6cc9447603",
+  "compatibility_date": "2026-10-12",
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../website/dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    {
+      "pattern": "clipse.delahousse.xyz",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.clipse.delahousse.xyz",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": false
+  }
+}

@@ -1,0 +1,36 @@
+.clipse-thumbnail-host { position: relative !important; }
+.clipse-thumbnail-button {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 8px;
+  background: rgb(15 15 15 / 92%);
+  color: #fff;
+  font: 500 13px/20px Roboto, Arial, sans-serif;
+  cursor: pointer;
+  opacity: 0;
+}
+.clipse-thumbnail-button img {
+  width: 20px;
+  height: 20px;
+  filter: invert(1);
+  pointer-events: none;
+}
+.clipse-thumbnail-host:hover > .clipse-thumbnail-button,
+.clipse-thumbnail-host:focus-within > .clipse-thumbnail-button,
+.clipse-thumbnail-button[data-state="running"],
+.clipse-thumbnail-button[data-state="failed"] { opacity: 1; }
+.clipse-thumbnail-button:hover { background: #303030; }
+.clipse-thumbnail-button:focus-visible { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; }
+.clipse-thumbnail-button:disabled { cursor: progress; }
+.clipse-thumbnail-button[data-state="running"] img { opacity: .5; }
+.clipse-thumbnail-button[data-state="completed"] { border-color: #8cdaac; }
+.clipse-thumbnail-button[data-state="failed"] { border-color: #ff8c8c; }
+@media (hover: none) { .clipse-thumbnail-button { opacity: 1; } }

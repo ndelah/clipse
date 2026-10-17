@@ -1,0 +1,1 @@
+Summarize YouTube videos with key takeaways, timestamps, and searchable local history. Bring your own OpenAI API key.
