@@ -36,11 +36,13 @@ Existing profiles with the exact untouched six-category starter set plus Other u
 
 ## Providers and data flow
 
-OpenAI is the default classifier, using the existing API key and model. It adds one structured classification request before summarization. Its probabilities and confidence are model-generated estimates; they have not been established as calibrated.
+OpenAI is the only provider. One key authenticates both `POST /v1/decisions` for classification and `POST /v1/responses` for summaries. The decision model is pinned to `gpt-6-luna`; the summary model remains configurable under advanced settings.
 
-Selecting Jev requires a separate TypeSafe key. One request to `POST https://api.typesafe.ai/v1/systemone` asks one Choice and three Score questions. The model is pinned to `jev-1.13.0`. If only Other remains, the Choice is omitted. The TypeSafe API key is only sent in that service's authorization header; the OpenAI key remains exclusive to OpenAI.
+A Decisions request asks one Choice question and three Score questions using named questions, choice descriptions, and ordered levels. If only Other remains, the Choice is omitted. Returned answer arrays and probability distributions are adapted to the internal classification format before validation. Refused or malformed answers use the existing fallback behavior.
 
-Both classifiers receive a bounded transcript state plus title and channel when available. Up to 18,000 transcript characters are sent in full; longer transcripts use eight equally spaced character windows covering the beginning, middle, and end. Sampling can miss a format change. The summary and section-analysis stages still receive all transcript text. Sampled classification is identified in the saved metadata and result UI.
+Onboarding accepts the key directly. Connecting or testing makes small paid requests to both endpoints to verify endpoint permissions and model access. Failed verification does not replace a saved key. Existing profiles discard the retired provider selection and TypeSafe key while preserving the OpenAI key and preferences. Routing version 2 invalidates old cache configurations without rewriting saved results.
+
+Classification receives a bounded transcript state plus title and channel when available. Up to 18,000 transcript characters are sent in full; longer transcripts use eight equally spaced character windows covering the beginning, middle, and end. Sampling can miss a format change. The summary and section-analysis stages still receive all transcript text. Sampled classification is identified in the saved metadata and result UI.
 
 Category definitions are used only for classification. The chosen category's summary instructions guide both short-video summaries and long-video section notes and final synthesis. Guidance explicitly asks the model to preserve substantive material outside the primary format as well. The final content-type schema is narrowed to the actual chosen category name, allowing custom categories.
 
@@ -58,14 +60,15 @@ These are qualitative whole-video estimates from the supplied text, not measurem
 
 Knowledge is judged independently of the viewer and never changes the category. A future viewer profile can adapt explanations and recommendations while retaining the same purpose classification. Confident specialist knowledge prompts preservation of technical distinctions; low density prompts condensation of repetition; specific instructions prompt preservation of steps and conditions, including in interviews and reviews.
 
-The UI shows qualitative labels rather than fractional scores. Uncertain knowledge and density appear as unclear; uncertain specificity is omitted. TypeSafe returns a probability-weighted mean for a Score. Incoming distributions, score consistency, and selected category membership are checked before use.
+The UI shows qualitative labels rather than fractional scores. Uncertain knowledge and density appear as unclear; uncertain specificity is omitted. OpenAI Decisions returns a probability-weighted mean for a Score. Incoming distributions, score consistency, and selected category membership are checked before use.
 
 ## Uncertainty, persistence, and validation
 
 The provisional category and score confidence threshold is 0.5. This is a configurable code constant, not an empirically validated accuracy guarantee. Uncertain category selection uses Other. A failed classifier request does not prevent summarization; cancellation does prevent further work. The UI identifies uncertain or unavailable classification.
 
-Jobs snapshot category definitions, prompt instructions, provider selection, and routing version with generation preferences. These enter cache compatibility checks; editing categories or changing provider causes an existing result to be marked as using different preferences until regenerated. Saved results retain the chosen category ID/name, provider/model, scores, confidence, sampling status, and fallback reason. Renaming or deleting a category does not rewrite old results. API keys are excluded from configuration snapshots and history exports/imports.
+Jobs snapshot category definitions, prompt instructions, and routing version with generation preferences. These enter cache compatibility checks; editing categories or changing routing version causes an existing result to be marked as using different preferences until regenerated. Saved results retain the chosen category ID/name, provider/model, scores, confidence, sampling status, and fallback reason. Renaming or deleting a category does not rewrite old results. API keys are excluded from configuration snapshots and history exports/imports.
 
-Automated checks cover category management and form persistence, custom-category routing, both provider paths, long-video prompt propagation, fallback and cancellation, cache invalidation, and history sanitization. They use mocked provider responses. Live Jev/OpenAI requests, threshold calibration, multilingual accuracy, and browser layout remain unverified.
+Automated checks cover category management and form persistence, custom-category routing, Decisions request/response adaptation and shared-key authentication, long-video prompt propagation, fallback and cancellation, cache invalidation, and history sanitization. They use mocked provider responses. Live OpenAI requests, threshold calibration, multilingual accuracy, and browser layout remain unverified.
 
-Official references: [API](https://docs.typesafe.ai/api), [Models](https://docs.typesafe.ai/models), [Choice](https://docs.typesafe.ai/primitives/choice), [Score](https://docs.typesafe.ai/primitives/score), [Confidence](https://docs.typesafe.ai/confidence).
+Official reference: [OpenAI Decisions API](https://developers.openai.com/api/reference/resources/decisions/methods/create).
+

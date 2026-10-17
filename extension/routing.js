@@ -1,8 +1,8 @@
 import {normalizeCategories} from "./categories.js";
 
-export const ROUTING_VERSION = 1;
+export const ROUTING_VERSION = 2;
 export const ROUTING_CONFIDENCE = 0.5; // Provisional; validate against representative videos before tuning.
-export const JEV_MODEL = "jev-1.13.0";
+export const DECISION_MODEL = "gpt-6-luna";
 export const SCORE_RUBRICS = Object.freeze({
   prior_knowledge: {
     instructions: "How much prior subject knowledge does the speaker assume? Judge the source independently of any viewer's personal experience.",
@@ -43,19 +43,27 @@ export function classificationQuestions(categories) {
   return questions;
 }
 
-export function classificationSchema(categories) {
-  const probabilities = keys => ({type: "object", additionalProperties: false,
-    properties: Object.fromEntries(keys.map(key => [key, {type: "number", minimum: 0, maximum: 1}])), required: keys});
-  const score = {type: "object", additionalProperties: false, properties: {
-    type: {type: "string", enum: ["score"]}, score: {type: "number", minimum: 0, maximum: 2},
-    probabilities: probabilities(["0", "1", "2"]), confidence: {type: "number", minimum: 0, maximum: 1}
-  }, required: ["type", "score", "probabilities", "confidence"]};
-  const properties = Object.fromEntries(Object.keys(SCORE_RUBRICS).map(key => [key, score]));
-  if (categories.length > 1) properties.category = {type: "object", additionalProperties: false, properties: {
-    type: {type: "string", enum: ["choice"]}, choice: {type: "string", enum: categories.map(category => category.id)},
-    probabilities: probabilities(categories.map(category => category.id)), confidence: {type: "number", minimum: 0, maximum: 1}
-  }, required: ["type", "choice", "probabilities", "confidence"]};
-  return {type: "object", additionalProperties: false, properties, required: Object.keys(properties)};
+// Adapt the classification rubric to OpenAI's Decisions request/response format.
+export function decisionQuestions(categories) {
+  return Object.entries(classificationQuestions(categories)).map(([name, question]) => ({
+    name, type: question.type, instructions: question.instructions,
+    ...(question.type === "score"
+      ? {levels: question.criteria.map((description, i) => ({label: String(i), description}))}
+      : {choices: Object.entries(question.criteria).map(([value, description]) => ({value, description}))})
+  }));
+}
+
+export function decisionAnswers(answers) {
+  if (!Array.isArray(answers)) return null;
+  const result = Object.create(null);
+  for (const answer of answers) {
+    if (!answer || !["category", ...Object.keys(SCORE_RUBRICS)].includes(answer.name)) continue;
+    if (Object.hasOwn(result, answer.name)) return null;
+    const probabilities = Array.isArray(answer.probabilities)
+      ? Object.fromEntries(answer.probabilities.map(item => [String(item.value), item.probability])) : null;
+    result[answer.name] = {...answer, probabilities};
+  }
+  return result;
 }
 
 const unit = value => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
@@ -97,3 +105,4 @@ export function routingInstructions(classification, categories) {
   if (scores.instruction_specificity?.confidence >= ROUTING_CONFIDENCE && scores.instruction_specificity.score >= 1.5) lines.push("Retain actionable steps, their order, conditions, and configuration details, regardless of the primary category.");
   return lines.join("\n");
 }
+

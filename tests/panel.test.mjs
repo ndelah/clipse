@@ -84,7 +84,8 @@ test("first use offers setup before a missing-key job error", async () => {
   assert.equal(p.elements.historyView.classList.contains("hidden"), true);
   await p.elements.onboardingNextButton.click();
   await p.elements.setupButton.click();
-  assert.equal(run(p.context, "view"), "settings");
+  assert.equal(run(p.context, "view"), "onboarding");
+  assert.match(p.elements.onboardingStatus.textContent, /Enter your OpenAI API key/);
   assert.equal(p.messages.length, 0);
 });
 
@@ -194,18 +195,34 @@ test("the welcome guide can be reopened from Settings and dismissed again", asyn
   assert.equal(run(p.context, "view"), "history");
 });
 
-test("saving an OpenAI key completes onboarding; leaving settings unsaved returns to it", async () => {
+test("onboarding validates and saves one key directly, then clears the input", async () => {
   const p = await panel({apiKey: "", summaries: {}});
   await p.elements.onboardingNextButton.click();
+  p.elements.onboardingApiKey.value = "  new-key  ";
+  await p.elements.toggleOnboardingKeyButton.click();
   await p.elements.setupButton.click();
-  await p.elements.settingsDoneButton.click();
-  assert.equal(run(p.context, "view"), "onboarding");
-  await p.elements.onboardingNextButton.click();
-  await p.elements.setupButton.click();
-  p.settingsCallbacks.onSaved({apiKey: "test"}); await settle();
-  await p.elements.settingsDoneButton.click();
-  assert.equal(run(p.context, "view"), "history");
+  assert.equal(p.messages[0].type, "VALIDATE_SETTINGS");
+  assert.equal(p.messages[0].settings.apiKey, "new-key");
+  assert.equal(p.local.state.apiKey, "new-key");
   assert.equal(p.local.state.onboardingDismissed, true);
+  assert.equal(run(p.context, "view"), "history");
+  assert.equal(p.elements.onboardingApiKey.value, "");
+  assert.equal(p.elements.onboardingApiKey.type, "password");
+});
+
+test("onboarding preserves an existing key when verification fails and allows retry", async () => {
+  const p = await panel({apiKey: "saved", summaries: {}});
+  await p.elements.onboardingHelpButton.click();
+  await p.elements.onboardingNextButton.click();
+  p.elements.onboardingApiKey.value = "replacement";
+  p.chrome.runtime.sendMessage = async () => ({ok: false, error: "Classification access unavailable."});
+  await p.elements.setupButton.click();
+  assert.equal(p.local.state.apiKey, "saved");
+  assert.equal(p.local.state.onboardingDismissed, undefined);
+  assert.equal(run(p.context, "view"), "onboarding");
+  assert.match(p.elements.onboardingStatus.textContent, /Classification access/);
+  assert.equal(p.elements.setupButton.disabled, false);
+  assert.equal(p.elements.onboardingConnection.getAttribute("inert"), null);
 });
 
 test("existing history bypasses onboarding even without a current key", async () => {
@@ -351,3 +368,4 @@ test("a new failure is announced and added without interrupting reading", async 
   await p.elements.backToHistoryButton.click(); await settle();
   assert.equal(p.elements.historyList.children.length, 3);
 });
+

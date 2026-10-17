@@ -2,13 +2,20 @@ import {DEFAULT_CATEGORIES, normalizeCategories, upgradeStarterCategories} from 
 
 export const DEFAULT_SETTINGS = Object.freeze({
   apiKey: "", model: "gpt-4.1-mini", outputLanguage: "same", captionLanguage: "auto", summaryLength: "detailed",
-  classifierProvider: "openai", jevApiKey: "", categories: DEFAULT_CATEGORIES, routingVersion: 1
+  categories: DEFAULT_CATEGORIES, routingVersion: 2
 });
 export const HISTORY_FORMAT = "video-preview-history";
 export const HISTORY_VERSION = 1;
 
 export async function loadSettings(storage) {
-  const settings = await storage.get(DEFAULT_SETTINGS);
+  const settings = await storage.get({...DEFAULT_SETTINGS, classifierProvider: null, jevApiKey: null});
+  if (settings.classifierProvider !== null || settings.jevApiKey !== null || settings.routingVersion !== 2) {
+    await storage.remove(["classifierProvider", "jevApiKey"]);
+    await storage.set({routingVersion: 2});
+    settings.routingVersion = 2;
+  }
+  delete settings.classifierProvider;
+  delete settings.jevApiKey;
   const categories = upgradeStarterCategories(settings.categories);
   if (categories !== settings.categories) {
     await storage.set({categories});
@@ -23,9 +30,8 @@ export function summaryConfiguration(settings = {}) {
     outputLanguage: String(settings.outputLanguage || DEFAULT_SETTINGS.outputLanguage).trim().slice(0, 80) || DEFAULT_SETTINGS.outputLanguage,
     captionLanguage: String(settings.captionLanguage || "auto").slice(0, 80),
     summaryLength: settings.summaryLength === "brief" ? "brief" : "detailed",
-    classifierProvider: settings.classifierProvider === "jev" ? "jev" : "openai",
     categories: normalizeCategories(settings.categories),
-    routingVersion: settings.routingVersion === 0 ? 0 : 1
+    routingVersion: [0, 1].includes(settings.routingVersion) ? settings.routingVersion : 2
   };
 }
 
@@ -33,7 +39,7 @@ export function sameConfiguration(a, b) {
   const first = summaryConfiguration(a);
   const second = summaryConfiguration(b);
   return first.model === second.model && first.outputLanguage.toLowerCase() === second.outputLanguage.toLowerCase()
-    && first.captionLanguage === second.captionLanguage && first.summaryLength === second.summaryLength && first.classifierProvider === second.classifierProvider
+    && first.captionLanguage === second.captionLanguage && first.summaryLength === second.summaryLength
     && (a?.routingVersion ?? 0) === (b?.routingVersion ?? 0)
     && JSON.stringify(first.categories) === JSON.stringify(second.categories);
 }
@@ -184,3 +190,4 @@ export function summaryMarkdown(summary) {
   if (p.learning_outcomes?.length) lines.push("## What you'll learn", "", ...p.learning_outcomes.map(value => `- ${escapeMarkdown(value)}`), "");
   return lines.join("\n").trim() + "\n";
 }
+

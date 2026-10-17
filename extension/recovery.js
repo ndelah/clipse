@@ -1,6 +1,6 @@
 export function recoveryFor(error) {
   const message = String(error?.message || error || "Unknown error");
-  if (/api key|api_key|incorrect.*key|authentication|401|cannot access.*model|model.*not found|TypeSafe/i.test(message)) {
+  if (/api key|api_key|incorrect.*key|authentication|401|cannot access.*model|model.*not found|cannot access.*classification|cannot access.*summaries/i.test(message)) {
     return {message: "Check your API connection, model access, and available credit in Settings.", action: "settings"};
   }
   if (/429|rate.limit|quota|credit|billing/i.test(message)) {
@@ -22,3 +22,4 @@ export function recoveryFor(error) {
     ? "Processing stopped before completion. Restarting begins again and may incur new API charges."
     : "The summary could not finish. Check your connection and restart; a restart may incur new API charges.", action: "retry"};
 }
+

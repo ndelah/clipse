@@ -1,3 +1,4 @@
+import {DECISION_MODEL} from "./routing.js";
 import {loadSettings, summaryConfiguration, sameConfiguration, videoIdFromUrl, videoUrl, parseHistory, mergeSummaries} from "./shared.js";
 const OFFSCREEN_URL = "offscreen.html";
 let creatingOffscreenDocument = null;
@@ -190,7 +191,6 @@ async function startJob(tabId, context, forceRefresh = false, fromThumbnail = fa
   if (!settings.apiKey) {
     throw new Error("Add your OpenAI API key in Settings before summarizing.");
   }
-  if (settings.classifierProvider === "jev" && !settings.jevApiKey) throw new Error("Add your TypeSafe API key in Settings before using Jev.");
 
   if (!context?.videoId) {
     throw new Error("YouTube video information is not available yet. Reload the video and try again.");
@@ -533,16 +533,25 @@ async function validateSettings(settings) {
   const apiKey = String(settings?.apiKey || "").trim();
   const config = summaryConfiguration(settings);
   if (!apiKey) throw new Error("Enter your OpenAI API key first.");
-  const response = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(config.model)}`, {
-    headers: {Authorization: `Bearer ${apiKey}`}, signal: AbortSignal.timeout(20000)
-  });
-  if (!response.ok) {
-    if (response.status === 401) throw new Error("OpenAI rejected this key. Check it and try again.");
-    if (response.status === 404 || response.status === 403) throw new Error("This key cannot access that model. Check the model name and project permissions.");
-    if (response.status === 429) throw new Error("OpenAI is rate limiting requests. Try validation again shortly.");
-    throw new Error(`Could not validate access (HTTP ${response.status}).`);
+  // Tiny requests verify endpoint permissions as well as model access.
+  for (const [capability, endpoint, body] of [
+    ["summaries", "responses", {model: config.model, input: "Reply OK.", max_output_tokens: 16, store: false}],
+    ["video classification", "decisions", {model: DECISION_MODEL, input: "Connection check.", questions: [
+      {name: "connection", type: "predicate", instructions: "Does the input mention a connection check?"}
+    ]}]
+  ]) {
+    const response = await fetch(`https://api.openai.com/v1/${endpoint}`, {
+      method: "POST", headers: {Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json"},
+      body: JSON.stringify(body), signal: AbortSignal.timeout(20000)
+    });
+    if (!response.ok) {
+      if (response.status === 401) throw new Error("OpenAI rejected this key. Check it and try again.");
+      if (response.status === 404 || response.status === 403) throw new Error(`This key cannot access ${capability}. Check model access and project permissions.`);
+      if (response.status === 429) throw new Error("OpenAI usage limit reached. Check API credit and rate limits, then try again.");
+      throw new Error(`Could not verify ${capability} (HTTP ${response.status}).`);
+    }
   }
-  return {message: "Key and model access verified. Summary requests require available API credit."};
+  return {message: "Connected. Summaries and video classification are available."};
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -752,3 +761,4 @@ chrome.alarms.onAlarm.addListener(alarm => {
     failStaleJobs().then(resumePendingJobs).catch(() => {});
   }
 });
+

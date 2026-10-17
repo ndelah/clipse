@@ -60,7 +60,6 @@
 .settings-disclosure-body { padding: 0 20px 20px; }
 .settings-disclosure-body > .settings-help:first-child { margin-top: 0; }
 .settings-disclosure-body > .settings-field:first-child { margin-top: 6px; }
-.provider-settings { margin-top: 18px; padding-top: 1px; border-top: 1px solid var(--border); }
 .settings-privacy { color: var(--muted); font-size: .78rem; line-height: 1.7; }
 .settings-privacy p { margin: 0 0 12px; }
 .settings-privacy p:last-child { margin: 0; }
@@ -110,3 +109,4 @@
   .settings-symbol, .connection-state { border: 1px solid CanvasText; }
   .settings-save-content .primary-button { border-color: ButtonText; }
 }
+

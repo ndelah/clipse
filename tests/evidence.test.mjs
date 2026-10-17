@@ -36,14 +36,15 @@ test("single and long-video synthesis retain original segment IDs through sectio
   const chrome = {runtime: {onMessage: event(), async sendMessage() { return {ok: true, job: {status: "running"}}; }}};
   const context = scriptContext("offscreen.js", {chrome, window: {addEventListener() {}}, async fetch(_url, options) {
     const body = JSON.parse(options.body); bodies.push(body);
-    return {ok: true, async json() { return {output_text: JSON.stringify(body.text.format.name === "video_preview"
+    return {ok: true, async json() { return {output_text: JSON.stringify(body.text?.format.name === "video_preview"
       ? {key_takeaways: [{text: "Final point", timestamp_seconds: 9999, source_segment_id: "S29"}]} : {source_segment_ids: ["S29"]})}; }};
   }});
   const result = await run(context, `createPreview({segments:Array.from({length:30},(_,i)=>({startSeconds:i*60,text:'Caption '.repeat(200)})),isGenerated:false}, {apiKey:'test', outputLanguage:'same'}, async()=>{}, 'job')`);
   assert.equal(result.key_takeaways[0].source.startSeconds, 29 * 60);
   assert.match(bodies.at(-1).instructions, /language of the supplied captions/);
   assert.match(bodies.at(-1).input, /S29/);
-  const sectionRequests = bodies.filter(body => body.text.format.name === "video_section_notes");
+  const sectionRequests = bodies.filter(body => body.text?.format.name === "video_section_notes");
   assert.match(sectionRequests.at(-1).input, /\[S29 /);
   assert.ok(sectionRequests[0].text.format.schema.required.includes("source_segment_ids"));
 });
+

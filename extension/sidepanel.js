@@ -436,8 +436,43 @@ async function initializeView() {
 elements.settingsButton.addEventListener("click", () => showView("settings", true));
 elements.backToHistoryButton.addEventListener("click", () => { selectedSummary = null; activeJobId = null; showView("history", true); });
 elements.settingsDoneButton.addEventListener("click", () => showView(returnView, true));
-for (const button of [elements.setupButton, elements.errorSettingsButton]) button.addEventListener("click", () => showView("settings", true));
+for (const button of [elements.errorSettingsButton]) button.addEventListener("click", () => showView("settings", true));
 for (const button of [elements.dismissOnboardingButton, elements.skipIntroButton]) button.addEventListener("click", dismissOnboarding);
+elements.toggleOnboardingKeyButton.addEventListener("click", () => {
+  const showing = elements.onboardingApiKey.type === "text";
+  elements.onboardingApiKey.type = showing ? "password" : "text";
+  elements.toggleOnboardingKeyButton.textContent = showing ? "Show" : "Hide";
+  elements.toggleOnboardingKeyButton.setAttribute("aria-label", `${showing ? "Show" : "Hide"} API key`);
+  elements.toggleOnboardingKeyButton.setAttribute("aria-pressed", String(!showing));
+});
+elements.setupButton.addEventListener("click", async () => {
+  const apiKey = elements.onboardingApiKey.value.trim();
+  if (!apiKey) { setStatus(elements.onboardingStatus, "Enter your OpenAI API key first.", true); elements.onboardingApiKey.focus(); return; }
+  elements.setupButton.disabled = true;
+  elements.onboardingConnection.setAttribute("inert", "");
+  elements.onboardingSetupSlide.setAttribute("aria-busy", "true");
+  elements.setupButton.textContent = "Connecting…";
+  setStatus(elements.onboardingStatus, "Checking summaries and video classification…");
+  try {
+    const settings = await loadSettings(chrome.storage.local);
+    const response = await chrome.runtime.sendMessage({type: "VALIDATE_SETTINGS", settings: {apiKey, model: settings.model}});
+    if (!response?.ok) throw new Error(response?.error || "Could not verify access. Try again.");
+    await chrome.storage.local.set({apiKey, onboardingDismissed: true});
+    elements.onboardingApiKey.value = "";
+    elements.onboardingApiKey.type = "password";
+    elements.toggleOnboardingKeyButton.textContent = "Show";
+    elements.toggleOnboardingKeyButton.setAttribute("aria-label", "Show API key");
+    elements.toggleOnboardingKeyButton.setAttribute("aria-pressed", "false");
+    setStatus(elements.onboardingStatus, "");
+    showView("history");
+  } catch (error) { setStatus(elements.onboardingStatus, error.message, true); }
+  finally {
+    elements.setupButton.disabled = false;
+    elements.setupButton.textContent = "Connect and continue";
+    elements.onboardingConnection.removeAttribute("inert");
+    elements.onboardingSetupSlide.setAttribute("aria-busy", "false");
+  }
+});
 elements.onboardingNextButton.addEventListener("click", () => setOnboardingPage(1, true));
 elements.onboardingIntroButton.addEventListener("click", () => setOnboardingPage(0, true));
 elements.onboardingSetupButton.addEventListener("click", () => setOnboardingPage(1, true));
@@ -493,3 +528,4 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (activeJobId && (changes.jobs || changes.summaries)) pollJob().catch(showError);
 });
 initializeView();
+

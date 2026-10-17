@@ -53,7 +53,7 @@ Loading from a different folder may create a new unpacked extension ID and separ
 
 In **Settings → Summary categories**, add, edit, or remove categories and customize their definitions and summary instructions. The starter set covers 20 distinct video categories, including recipes and cooking, plus a mandatory Other fallback. Each category defines what belongs there and what its summary must preserve. Untouched older starter sets upgrade automatically; customized sets and saved summaries stay intact. Save settings to apply changes to new or regenerated summaries.
 
-Classification runs before summarization and scores assumed prior knowledge, information density, and instruction specificity independently of the viewer's experience. OpenAI classification uses the existing key and model by default. To use Jev, select **Video classification → Jev · TypeSafe** and supply a TypeSafe API key. This sends caption excerpts and video metadata to TypeSafe; OpenAI still writes the summary. Classification failure or uncertainty uses the Other prompt automatically.
+Classification runs before summarization and scores assumed prior knowledge, information density, and instruction specificity independently of the viewer's experience. OpenAI Decisions (`gpt-6-luna`) classifies videos, and the summary language model writes summaries. Both use the same OpenAI API key. Onboarding accepts and verifies that key directly; connection checks make small paid requests to both endpoints. Classification failure or uncertainty uses the Other prompt automatically.
 
 See [routing design and limitations](docs/category-routing.md). Automated integration checks use mocked provider responses; live API behavior and browser presentation still require verification.
 
@@ -72,3 +72,4 @@ npm run package
 These checks do not prove live YouTube DOM compatibility, real OpenAI access, or visual rendering in Chrome.
 
 See [transcript diagnosis and regression coverage](docs/transcript-reliability.md), [implemented UI redesign and validation](docs/ui-redesign.md), [current features](docs/current-features.md), [v0.8.0 changes](docs/release-0.8.0.md), and [architecture](docs/architecture.md).
+

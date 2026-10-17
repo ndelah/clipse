@@ -9,7 +9,7 @@ function showKeyState(elements, saved = false) {
 }
 
 function concealKeys(elements) {
-  for (const [input, button, label] of [[elements.apiKey, elements.toggleKeyButton, "API key"], [elements.jevApiKey, elements.toggleJevKeyButton, "TypeSafe API key"]]) {
+  for (const [input, button, label] of [[elements.apiKey, elements.toggleKeyButton, "API key"]]) {
     input.type = "password";
     button.textContent = "Show";
     button.setAttribute("aria-label", `Show ${label}`);
@@ -21,7 +21,7 @@ export async function loadSettingsForm(elements) {
   const settings = await loadSettings(chrome.storage.local);
   elements.apiKey.value = settings.apiKey || "";
   const config = summaryConfiguration(settings);
-  for (const key of ["model", "summaryLength", "classifierProvider"]) elements[key].value = config[key];
+  for (const key of ["model", "summaryLength"]) elements[key].value = config[key];
   elements.outputLanguage.value = config.outputLanguage === "same" ? "Same as captions" : config.outputLanguage;
   elements.outputLanguages.replaceChildren();
   for (const name of ["Same as captions", ...OUTPUT_LANGUAGES]) {
@@ -34,9 +34,6 @@ export async function loadSettingsForm(elements) {
     tracks = response?.context?.captionTracks || [];
   } catch { /* Settings also work without a YouTube tab. */ }
   fillCaptionOptions(elements.captionLanguage, tracks, config.captionLanguage, document);
-  elements.jevApiKey.value = settings.jevApiKey || "";
-  elements.jevSettings.classList.toggle("hidden", config.classifierProvider !== "jev");
-  if (config.classifierProvider === "jev") elements.classificationSettings.open = true;
   concealKeys(elements);
   showKeyState(elements, true);
   elements.settingsStatus.textContent = "Your preferences, saved in this browser.";
@@ -45,16 +42,14 @@ export async function loadSettingsForm(elements) {
 }
 
 export function settingsFromForm(elements) {
-  if (elements.classifierProvider.value === "jev" && !elements.jevApiKey.value.trim()) throw new Error("Add a TypeSafe API key to classify videos with Jev.");
-  return {apiKey: elements.apiKey.value.trim(), jevApiKey: elements.jevApiKey.value.trim(), ...summaryConfiguration({
+  return {apiKey: elements.apiKey.value.trim(), ...summaryConfiguration({
     model: elements.model.value, outputLanguage: /^(same|same as captions)$/i.test(elements.outputLanguage.value.trim()) ? "same" : elements.outputLanguage.value, captionLanguage: elements.captionLanguage.value, summaryLength: elements.summaryLength.value,
-    classifierProvider: elements.classifierProvider.value, categories: readCategoryEditor(elements)
+    categories: readCategoryEditor(elements)
   })};
 }
 
 export function wireSettingsForm(elements, {onSaved = () => {}} = {}) {
   wireCategoryEditor(elements);
-  elements.classifierProvider.addEventListener("change", () => elements.jevSettings.classList.toggle("hidden", elements.classifierProvider.value !== "jev"));
   const status = (message, error = false) => {
     elements.settingsStatus.textContent = message;
     elements.settingsStatus.classList.toggle("error", error);
@@ -67,7 +62,13 @@ export function wireSettingsForm(elements, {onSaved = () => {}} = {}) {
     if (event.target?.closest("button")) markUnsaved();
   });
   elements.apiKey.addEventListener("input", () => showKeyState(elements));
-  for (const [input, button, label] of [[elements.apiKey, elements.toggleKeyButton, "API key"], [elements.jevApiKey, elements.toggleJevKeyButton, "TypeSafe API key"]]) {
+  elements.removeKeyButton.addEventListener("click", () => {
+    elements.apiKey.value = "";
+    concealKeys(elements);
+    showKeyState(elements);
+    markUnsaved();
+  });
+  for (const [input, button, label] of [[elements.apiKey, elements.toggleKeyButton, "API key"]]) {
     button.addEventListener("click", () => {
       const showing = input.type === "text";
       input.type = showing ? "password" : "text";
@@ -105,12 +106,13 @@ export function wireSettingsForm(elements, {onSaved = () => {}} = {}) {
   });
   elements.validateKeyButton.addEventListener("click", async () => {
     busy(true, "test");
-    status("Checking key and model access (no summary request)…");
+    status("Checking summaries and video classification…");
     try {
       const response = await chrome.runtime.sendMessage({type: "VALIDATE_SETTINGS", settings: {apiKey: elements.apiKey.value.trim(), model: elements.model.value.trim() || DEFAULT_SETTINGS.model}});
       if (!response?.ok) throw new Error(response?.error || "Could not check access. Try again.");
-      status(`${response.message}${elements.classifierProvider.value === "jev" ? " TypeSafe access is checked during classification." : ""}`);
+      status(response.message);
     } catch (error) { status(error.message, true); }
     finally { busy(false); }
   });
 }
+
