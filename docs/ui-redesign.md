@@ -1,6 +1,6 @@
 # UI redesign
 
-The active `extension/` implements the nine UI/UX workstreams scoped in the review. Existing category routing, custom category editing, Jev/TypeSafe support, brief/detailed generation, and compatible history exports remain available.
+The active `extension/` implements the nine UI/UX workstreams scoped in the review. Existing category routing, custom category editing, one-key OpenAI support, brief/detailed generation, and compatible history exports remain available.
 
 ## Implemented behavior
 
@@ -29,3 +29,4 @@ Runtime and Node tests remain dependency-free. Rendering checks require Playwrig
 Earlier validation on 2026-10-12, before the summary simplification: 56 Node regression tests and 223 automated rendering/interaction assertions passed. Static checks and ZIP packaging passed. Screenshots in `dist/ui-check/summary-light.png` and `summary-dark.png` use illustrative fixtures rather than a live video.
 
 Summary simplification validation on 2026-10-12: 34 targeted Node tests, static checks, and 223 automated rendering/interaction assertions passed. The extension ZIP was rebuilt. Current summary screenshots reflect the simplified hierarchy, timestamp-only playback, top icon actions, and removal of Save and source disclosures. Live YouTube and provider behavior were not exercised.
+

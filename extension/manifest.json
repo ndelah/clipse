@@ -16,8 +16,7 @@
     "https://www.youtube.com/*",
     "https://youtube.com/*",
     "https://m.youtube.com/*",
-    "https://api.openai.com/*",
-    "https://api.typesafe.ai/*"
+    "https://api.openai.com/*"
   ],
   "background": {
     "service_worker": "service-worker.js",
@@ -84,3 +83,4 @@
     }
   ]
 }
+

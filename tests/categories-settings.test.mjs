@@ -40,34 +40,23 @@ test("categories can be added, edited, removed and saved from the actual setting
   assert.equal(f.elements.categoryList.children[0].children[3].children[0].value, "Retain each setup command.");
 });
 
-test("invalid category drafts cannot silently discard edits, and TypeSafe key is required only for Jev", async () => {
+test("invalid category drafts cannot silently discard edits", async () => {
   const f = await form({apiKey: "existing-key"});
   await f.elements.addCategoryButton.click();
   await f.elements.saveSettingsButton.click();
   assert.equal(f.local.state.categories, undefined);
   assert.match(f.elements.settingsStatus.textContent, /Every category/);
   await f.elements.categoryList.children.at(-2).children.at(-1).click();
-  f.elements.classifierProvider.value = "jev";
-  await f.elements.classifierProvider.fire("change");
-  assert.equal(f.elements.jevSettings.classList.contains("hidden"), false);
   await f.elements.saveSettingsButton.click();
-  assert.match(f.elements.settingsStatus.textContent, /TypeSafe API key/);
-  assert.equal(f.local.state.classifierProvider, undefined);
-  f.elements.jevApiKey.value = "jev-private";
-  await f.elements.saveSettingsButton.click();
-  assert.equal(f.local.state.classifierProvider, "jev");
-  assert.equal(f.local.state.jevApiKey, "jev-private");
-  f.elements.classifierProvider.value = "openai";
-  f.elements.jevApiKey.value = "";
-  await f.elements.saveSettingsButton.click();
-  assert.equal(f.local.state.classifierProvider, "openai");
+  assert.ok(f.local.state.categories);
+  assert.equal(f.elements.classifierProvider, undefined);
+  assert.equal(f.elements.jevApiKey, undefined);
 });
 
-test("settings show unsaved edits and conceal both keys after saving or reopening", async () => {
+test("settings show unsaved edits and conceal the key after saving or reopening", async () => {
   const f = await form({apiKey: "existing-key", jevApiKey: "typesafe-key", classifierProvider: "jev"});
   assert.equal(f.elements.connectionState.textContent, "Key saved");
-  assert.equal(f.elements.classificationSettings.open, true);
-  for (const [input, button] of [[f.elements.apiKey, f.elements.toggleKeyButton], [f.elements.jevApiKey, f.elements.toggleJevKeyButton]]) {
+  for (const [input, button] of [[f.elements.apiKey, f.elements.toggleKeyButton]]) {
     assert.equal(input.type, "password");
     await button.click();
     assert.equal(input.type, "text");
@@ -78,14 +67,14 @@ test("settings show unsaved edits and conceal both keys after saving or reopenin
   assert.match(f.elements.settingsStatus.textContent, /unsaved/);
   await f.elements.saveSettingsButton.click();
   assert.equal(f.local.state.outputLanguage, "French");
-  for (const [input, button] of [[f.elements.apiKey, f.elements.toggleKeyButton], [f.elements.jevApiKey, f.elements.toggleJevKeyButton]]) {
+  for (const [input, button] of [[f.elements.apiKey, f.elements.toggleKeyButton]]) {
     assert.equal(input.type, "password");
     assert.equal(button.getAttribute("aria-pressed"), "false");
     await button.click();
   }
   await run(f.context, "loadSettingsForm(elements)");
   assert.equal(f.elements.apiKey.type, "password");
-  assert.equal(f.elements.jevApiKey.type, "password");
+  assert.equal("jevApiKey" in f.local.state, false);
 });
 
 test("failed connection checks preserve saved settings and release the busy controls", async () => {
@@ -121,4 +110,17 @@ test("settings display upgraded defaults and preserve an edited recipe category 
   await f.elements.saveSettingsButton.click();
   await run(f.context, "loadSettingsForm(elements)");
   assert.equal(f.elements.categoryList.children[0].children[3].children[0].value, instructions.value);
+});
+
+
+test("removing a key requires saving, retains preferences, and makes no paid connection check", async () => {
+  let checks = 0;
+  const f = await form({apiKey: "existing-key", summaryLength: "brief"}, async () => { checks++; return {ok: true}; });
+  await f.elements.removeKeyButton.click();
+  assert.equal(f.local.state.apiKey, "existing-key");
+  assert.equal(f.elements.apiKey.value, "");
+  await f.elements.saveSettingsButton.click();
+  assert.equal(f.local.state.apiKey, "");
+  assert.equal(f.local.state.summaryLength, "brief");
+  assert.equal(checks, 0);
 });

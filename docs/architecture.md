@@ -11,7 +11,7 @@
 6. `offscreen.js` receives a transcript, applies the job's generation configuration, calls OpenAI, and sends progress/completion to the worker.
 7. `shared.js` holds defaults, configuration comparison, exact video identity, history normalization/merge, and Markdown export. `settings-form.js` shares settings behavior between the panel and options page.
 
-For long transcripts, offscreen processing produces section notes then a whole-video synthesis. Settings snapshot model, caption/output language, length, and category/provider configuration; API keys are retrieved separately and never included in summary configuration or exports. Legacy summaries remain readable. Generation reuses cached summaries only when their configuration matches current settings. See [UI redesign](ui-redesign.md) for current behavior and validation boundaries.
+For long transcripts, offscreen processing produces section notes then a whole-video synthesis. Settings snapshot model, caption/output language, length, and category configuration and routing version; API keys are retrieved separately and never included in summary configuration or exports. Legacy summaries remain readable. Generation reuses cached summaries only when their configuration matches current settings. See [UI redesign](ui-redesign.md) for current behavior and validation boundaries.
 
 ## Local state
 
@@ -37,3 +37,4 @@ Chrome storage access is restricted to trusted extension contexts; content scrip
 - Historical `video-preview-extension*` folders stay ignored and are excluded from ZIP output.
 - Run focused regression tests for affected behavior, then static checks/package. Browser/API/visual verification is separate.
 - Old direct-caption parsing helpers remain in `offscreen.js`; the active direct request is in the YouTube content script, with DOM fallback there.
+

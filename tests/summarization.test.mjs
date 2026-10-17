@@ -14,7 +14,8 @@ test("brief output language is applied to the single-request summary", async () 
   const f = offscreen();
   await run(f.context, `createPreview({segments:[{startSeconds:0,text:'Hello'}],isGenerated:null}, {apiKey:'test',model:'gpt-4.1-mini',outputLanguage:'French',summaryLength:'brief'}, async()=>{}, '${VIDEO_A}')`);
   assert.equal(f.bodies.length, 2);
-  assert.equal(f.bodies[0].text.format.name, "video_classification");
+  assert.equal(f.bodies[0].model, "gpt-6-luna");
+  assert.ok(Array.isArray(f.bodies[0].questions));
   assert.match(f.bodies[1].instructions, /in French/);
   assert.match(f.bodies[1].instructions, /1–2 short paragraphs/);
   assert.match(f.bodies[1].instructions, /separate paragraphs with two newline characters/);
@@ -52,3 +53,4 @@ test("thumbnail summaries use metadata acquired while reading captions", async (
   assert.equal(completed.channel, "Real channel");
   assert.equal(completed.durationSeconds, 180);
 });
+

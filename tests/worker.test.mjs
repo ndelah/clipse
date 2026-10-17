@@ -88,7 +88,7 @@ test("credential validation distinguishes invalid keys from model-access failure
     w.context.fetch = async () => ({ok: false, status});
     const result = await w.message({type: "VALIDATE_SETTINGS", settings: {apiKey: "test"}});
     assert.equal(result.ok, false);
-    assert.match(result.error, status === 401 ? /rejected this key/ : status === 429 ? /rate limiting/ : /cannot access/);
+    assert.match(result.error, status === 401 ? /rejected this key/ : status === 429 ? /usage limit/ : /cannot access/);
   }
   w.context.fetch = async () => ({ok: true});
   assert.equal((await w.message({type: "VALIDATE_SETTINGS", settings: {apiKey: "test"}})).ok, true);
@@ -424,4 +424,21 @@ test("discard rejects active or missing jobs", async () => {
     assert.equal(response.ok, false);
   }
   assert.equal(w.local.state.jobs.active.dismissedAt, undefined);
+});
+
+
+test("connection checks exercise both endpoints with the same key and report decision-access failures", async () => {
+  const w = worker();
+  const requests = [];
+  w.context.fetch = async (url, options) => {
+    requests.push({url, ...options, body: JSON.parse(options.body)});
+    return {ok: !url.endsWith("/decisions"), status: 403};
+  };
+  const result = await w.message({type: "VALIDATE_SETTINGS", settings: {apiKey: "shared-key", model: "gpt-4.1-mini"}});
+  assert.equal(result.ok, false);
+  assert.match(result.error, /video classification/);
+  assert.deepEqual(requests.map(request => request.url), ["https://api.openai.com/v1/responses", "https://api.openai.com/v1/decisions"]);
+  assert.ok(requests.every(request => request.headers.Authorization === "Bearer shared-key"));
+  assert.equal(requests[1].body.model, "gpt-6-luna");
+  assert.ok(!JSON.stringify(requests.map(request => request.body)).includes("shared-key"));
 });

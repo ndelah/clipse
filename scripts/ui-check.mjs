@@ -5,7 +5,7 @@ import path from "node:path";
 import {fileURLToPath, pathToFileURL} from "node:url";
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : "playwright");
 const root = fileURLToPath(new URL("../", import.meta.url));
-const browser = await chromium.launch({channel: "chrome", headless: true});
+const browser = await chromium.launch({...process.env.CHROME_PATH ? {executablePath: process.env.CHROME_PATH} : {channel: "chrome"}, headless: true});
 const output = path.join(root, "dist", "ui-check");
 await mkdir(output, {recursive: true});
 const A = "abcdefghijk", B = "lmnopqrstuv";
@@ -95,18 +95,12 @@ try {
     await f.page.locator("#settingsButton").click();
     await f.page.locator("#apiKey").waitFor(); await layout(f.page);
     if (width === 400) await f.page.screenshot({path: path.join(output, `settings-${theme}.png`), fullPage: true});
-    await f.page.locator("#classificationSettings > summary").click();
-    await f.page.locator("#classifierProvider").selectOption("jev");
-    await f.page.locator("#jevApiKey").fill("fixture-typesafe-key");
-    await f.page.locator("#toggleJevKeyButton").click();
-    assert.equal(await f.page.locator("#jevApiKey").getAttribute("type"), "text");
     await f.page.locator("#toggleKeyButton").click();
     await f.page.locator("#outputLanguage").fill("French");
     await f.page.getByText("You have unsaved changes.", {exact: true}).waitFor();
     await f.page.locator("#saveSettingsButton").click();
     await f.page.getByText("Saved. You're ready to summarize a video.", {exact: true}).waitFor();
     assert.equal(await f.page.locator("#apiKey").getAttribute("type"), "password");
-    assert.equal(await f.page.locator("#jevApiKey").getAttribute("type"), "password");
     assert.equal(await f.page.evaluate(() => fixture.state.outputLanguage), "French");
     await layout(f.page); checks += 4;
     await f.page.locator("#categoriesSettings > summary").click();
@@ -213,8 +207,7 @@ try {
     for (const question of await page.locator(".onboarding-faq summary").all()) await question.click();
     await layout(page);
     await page.locator("#setupButton").click();
-    await page.locator("#apiKey").waitFor();
-    await page.locator("#settingsDoneButton").click();
+    await page.getByText("Enter your OpenAI API key first.", {exact: true}).waitFor();
     await page.locator("#onboardingView:not(.hidden)").waitFor();
     assert.equal(await page.locator("#onboardingHeading").evaluate(e => e === document.activeElement), true);
     await page.locator("#dismissOnboardingButton").click();
@@ -226,14 +219,12 @@ try {
     await page.locator("#onboardingHelpButton").click();
     assert.equal(await page.locator("#onboardingIntroSlide").isVisible(), true);
     await page.locator("#onboardingNextButton").click();
+    await page.locator("#onboardingApiKey").fill("fixture-new-key");
     await page.locator("#setupButton").click();
-    await page.locator("#apiKey").fill("fixture-new-key");
-    await page.locator("#saveSettingsButton").click();
-    await page.getByText("Saved. You're ready to summarize a video.", {exact: true}).waitFor();
-    await page.locator("#settingsDoneButton").click();
     await page.locator("#historyView:not(.hidden)").waitFor();
     assert.deepEqual(first.errors, []); checks += 14;
     await first.context.close();
   }
   console.log(`${checks} automated rendering/interaction assertions passed. Screenshots: ${output}`);
 } finally { await browser.close(); }
+

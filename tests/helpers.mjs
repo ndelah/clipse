@@ -20,7 +20,7 @@ export function event() {
 }
 export function storage(seed = {}) {
   const state = structuredClone(seed);
-  return {state, async get(defaults = {}) { return structuredClone({...defaults, ...state}); }, async set(patch) { Object.assign(state, structuredClone(patch)); }, async setAccessLevel() {}};
+  return {state, async get(defaults = {}) { return structuredClone({...defaults, ...state}); }, async set(patch) { Object.assign(state, structuredClone(patch)); }, async remove(keys) { for (const key of keys) delete state[key]; }, async setAccessLevel() {}};
 }
 export function scriptContext(filename, globals = {}) {
   const context = vm.createContext({URL, console, setTimeout, clearTimeout, setInterval, clearInterval, AbortController, AbortSignal, DOMException, crypto: webcrypto, structuredClone, ...categories, ...routing, ...shared, ...evidence, ...languages, ...recovery, ...globals});
@@ -51,3 +51,4 @@ export class Element {
   remove() {}
 }
 export async function settle() { for (let i = 0; i < 12; i++) await new Promise(resolve => setImmediate(resolve)); }
+
