@@ -1,0 +1,100 @@
+{
+  "manifest_version": 3,
+  "name": "Clipse",
+  "version": "0.8.2",
+  "description": "Summarize YouTube videos with key takeaways, timestamps, and searchable local history. Bring your own OpenAI API key.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "clipse@clipse.extension",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["websiteContent"]
+      }
+    }
+  },
+  "permissions": [
+    "alarms",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://youtube.com/*",
+    "https://m.youtube.com/*",
+    "https://api.openai.com/*",
+    "https://api.typesafe.ai/*"
+  ],
+  "background": {
+    "scripts": ["service-worker.js"],
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Clipse — summary history",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png"
+    }
+  },
+  "sidebar_action": {
+    "default_title": "Clipse — summary history",
+    "default_panel": "sidepanel.html",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png"
+    },
+    "open_at_install": false
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "page-context.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "content-script.js",
+        "player-button.js",
+        "thumbnail-button.js"
+      ],
+      "run_at": "document_start",
+      "css": [
+        "player-button.css",
+        "thumbnail-button.css"
+      ]
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/eclipse.svg"
+      ],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://m.youtube.com/*"
+      ]
+    }
+  ]
+}

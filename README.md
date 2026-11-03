@@ -6,6 +6,7 @@ Clipse summarizes captioned YouTube videos so you can decide what to watch and r
 
 ```text
 extension/             Load this directory as an unpacked Chrome extension
+extension-firefox/     Load this directory as a temporary Firefox add-on
   manifest.json        Permissions and entrypoints
   service-worker.js    Jobs, video targeting, and serialized history writes
   offscreen.html/js    Background OpenAI summarization
@@ -49,6 +50,19 @@ Thumbnail summaries keep you on your current page. Clipse requests the thumbnail
 
 Loading from a different folder may create a new unpacked extension ID and separate profile storage. Export existing history first, then import it into Clipse. Keys and settings are excluded from backups and must be entered again.
 
+## Firefox
+
+`extension-firefox/` is a Manifest V3 add-on for Firefox 128 or later. It uses the same source files as `extension/`. `npm run sync:firefox` copies them after a Chrome-side change; `npm run check` fails if the copies drift. Only `extension-firefox/manifest.json` is Firefox-specific.
+
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Choose **Load Temporary Add-on…** and select `extension-firefox/manifest.json`.
+3. Reload open YouTube tabs, then open Clipse from the toolbar button. That button toggles the Firefox sidebar. The sidebar lists saved summaries and settings, same as Chrome’s side panel.
+4. Connect OpenAI from the sidebar or the add-on options page.
+
+Firefox cannot open the sidebar from the YouTube player or thumbnail click, because that gesture belongs to the page rather than the browser. Those buttons still start the summary. Open the sidebar from the toolbar to read it. While a summary is running, Firefox may show a minimized **Clipse worker** window. That window is the stand-in for Chrome’s invisible offscreen document: it keeps caption parsing and OpenAI requests alive after the sidebar closes. Leave it minimized. Closing it can stop the job; the next summary opens it again.
+
+Firefox has no `storage.local.setAccessLevel`, so credential storage cannot be limited to trusted extension contexts the way it is in Chrome. Content scripts still do not read storage. Summaries send caption text to OpenAI, which the manifest declares as `websiteContent`. A temporary add-on is removed when Firefox exits. Permanent installation requires a signed package. `npm run package` writes `dist/clipse-firefox-0.8.2.xpi`.
+
 ## Category-aware summaries
 
 In **Settings → Summary categories**, add, edit, or remove categories and customize their definitions and summary instructions. The starter set covers 20 distinct video categories, including recipes and cooking, plus a mandatory Other fallback. Each category defines what belongs there and what its summary must preserve. Untouched older starter sets upgrade automatically; customized sets and saved summaries stay intact. Save settings to apply changes to new or regenerated summaries.
@@ -67,7 +81,7 @@ npm run check
 npm run package
 ```
 
-`test` covers video targeting, stable saved reading, caption cleanup, configuration-aware caching, history/undo/import concurrency, output prompts, and exports with mocked Chrome/DOM/API boundaries. `check` validates syntax, module imports, resources, and version consistency. `package` includes the static check and writes `dist/clipse-0.8.2.zip` with the manifest at the ZIP root; it requires the system `zip` utility.
+`test` covers video targeting, stable saved reading, caption cleanup, configuration-aware caching, history/undo/import concurrency, output prompts, and exports with mocked Chrome/DOM/API boundaries, including the Firefox sidebar and worker-window path. `check` validates syntax, module imports, resources, version consistency, and Firefox file parity. `package` includes the static check and writes `dist/clipse-0.8.2.zip` plus `dist/clipse-firefox-0.8.2.xpi`, each with the manifest at the archive root; it requires the system `zip` utility. After changing files in `extension/`, run `npm run sync:firefox` before `npm run check`.
 
 These checks do not prove live YouTube DOM compatibility, real OpenAI access, or visual rendering in Chrome.
 
