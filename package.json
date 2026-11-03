@@ -1,6 +1,6 @@
 {
   "name": "clipse",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "private": true,
   "description": "Clipse \u2014 a transcript-based YouTube video summarizer for Chrome and Firefox.",
   "engines": {

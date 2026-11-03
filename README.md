@@ -1,6 +1,6 @@
 # Clipse
 
-Clipse summarizes captioned YouTube videos so you can decide what to watch and revisit useful moments. **v0.8.2** builds on the supplied v0.7.3 baseline.
+Clipse summarizes captioned YouTube videos so you can decide what to watch and revisit useful moments. **v0.8.3** builds on the supplied v0.7.3 baseline.
 
 ## Project structure
 
@@ -61,7 +61,7 @@ Loading from a different folder may create a new unpacked extension ID and separ
 
 Firefox cannot open the sidebar from the YouTube player or thumbnail click, because that gesture belongs to the page rather than the browser. Those buttons still start the summary. Open the sidebar from the toolbar to read it. While a summary is running, Firefox may show a minimized **Clipse worker** window. That window is the stand-in for Chrome’s invisible offscreen document: it keeps caption parsing and OpenAI requests alive after the sidebar closes. Leave it minimized. Closing it can stop the job; the next summary opens it again.
 
-Firefox has no `storage.local.setAccessLevel`, so credential storage cannot be limited to trusted extension contexts the way it is in Chrome. Content scripts still do not read storage. Summaries send caption text to OpenAI, which the manifest declares as `websiteContent`. A temporary add-on is removed when Firefox exits. Permanent installation requires a signed package. `npm run package` writes `dist/clipse-firefox-0.8.2.xpi`.
+Firefox has no `storage.local.setAccessLevel`, so credential storage cannot be limited to trusted extension contexts the way it is in Chrome. Content scripts still do not read storage. Summaries send caption text to OpenAI, which the manifest declares as `websiteContent`. A temporary add-on is removed when Firefox exits. Permanent installation requires a signed package. `npm run package` writes `dist/clipse-firefox-0.8.3.xpi`.
 
 ## Category-aware summaries
 
@@ -81,7 +81,7 @@ npm run check
 npm run package
 ```
 
-`test` covers video targeting, stable saved reading, caption cleanup, configuration-aware caching, history/undo/import concurrency, output prompts, and exports with mocked Chrome/DOM/API boundaries, including the Firefox sidebar and worker-window path. `check` validates syntax, module imports, resources, version consistency, and Firefox file parity. `package` includes the static check and writes `dist/clipse-0.8.2.zip` plus `dist/clipse-firefox-0.8.2.xpi`, each with the manifest at the archive root; it requires the system `zip` utility. After changing files in `extension/`, run `npm run sync:firefox` before `npm run check`.
+`test` covers video targeting, stable saved reading, caption cleanup, configuration-aware caching, history/undo/import concurrency, output prompts, and exports with mocked Chrome/DOM/API boundaries, including the Firefox sidebar and worker-window path. `check` validates syntax, module imports, resources, version consistency, and Firefox file parity. `package` includes the static check and writes `dist/clipse-0.8.3.zip` plus `dist/clipse-firefox-0.8.3.xpi`, each with the manifest at the archive root; it requires the system `zip` utility. After changing files in `extension/`, run `npm run sync:firefox` before `npm run check`.
 
 These checks do not prove live YouTube DOM compatibility, real OpenAI access, or visual rendering in Chrome.
 
