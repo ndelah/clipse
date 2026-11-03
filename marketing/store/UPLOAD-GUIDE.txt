@@ -15,7 +15,7 @@ Suggested YouTube title: Clipse — Understand a YouTube video before you watch
 Suggested YouTube description: video-description.txt
 Optional video thumbnail: video-poster.png
 
-The extension upload ZIP is clipse-0.8.2.zip and is separate from this media bundle.
+The extension upload ZIP is clipse-0.8.3.zip and is separate from this media bundle.
 Do not upload the media bundle as the extension package.
 
 The screenshots show the actual Clipse interface with labeled synthetic examples.

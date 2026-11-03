@@ -43,7 +43,7 @@ section { margin-bottom: 24px; }
 .button-row .primary-button { width: auto; flex: 1 1 140px; }
 .reading-navigation { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 18px; font-size: .8rem; }
 #resultState { font-size: 15px; line-height: 1.65; }
-.result-toolbar { display: flex; justify-content: flex-end; gap: 4px; margin: -8px 0 12px; }
+.result-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 4px; margin: 16px 0 0; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 8px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); }
 .icon-button:hover { color: var(--text); background: var(--surface-2); }
 .icon-button svg { display: block; flex: none; }

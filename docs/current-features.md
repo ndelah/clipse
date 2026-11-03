@@ -1,4 +1,4 @@
-# Current features: v0.8.2
+# Current features: v0.8.3
 
 > This inventory describes the earlier implementation. See [the UI redesign](ui-redesign.md) for the current navigation, evidence, caption selection, library controls, and validation boundaries.
 
@@ -37,7 +37,7 @@ Implementation inventory. Focused regression checks use mocked browser and API b
 - Local profile history stores the latest summary per video ID and presents newest first.
 - Search by title, channel, overview, or full summary.
 - Read, open source, delete individual records, or clear all. Summaries enter history automatically; there is no separate Save feature or Saved filter.
-- Summary actions use copy and Markdown download icons at the top. Takeaways have plain text without dividers; only timestamps are clickable. Caption metadata lives in About this video, with no source dropdowns or duplicate playback links.
+- Summary actions use copy and Markdown download icons below the summary text. Takeaways have plain text without dividers; only timestamps are clickable. Caption metadata lives in About this video, with no source dropdowns or duplicate playback links.
 - Persistent single-level undo for deletion/clear. Undo preserves summaries saved or imported more recently. Deleted records remain locally available for undo until the next deletion or restoration.
 - Versioned JSON backup/import; compatible with `video-preview-history` version 1.
 - Imports validate supported fields, dates, YouTube IDs/links, and takeaway shapes; report skipped records. File selection is limited to 10 MB.

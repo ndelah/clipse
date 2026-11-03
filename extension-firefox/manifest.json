@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Clipse",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Summarize YouTube videos with key takeaways, timestamps, and searchable local history. Bring your own OpenAI API key.",
   "browser_specific_settings": {
     "gecko": {

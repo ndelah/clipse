@@ -3,14 +3,14 @@
 #resultState :focus-visible { outline-color: var(--library-accent); }
 .summary-card, .summary-details { min-width: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 2px 6px #20201d03; }
 .summary-card { margin: 0 0 16px; padding: 20px; }
-.result-title { font-size: 1.55rem; line-height: 1.25; letter-spacing: -.04em; text-wrap: balance; }
+.result-title { font-size: 1.55rem; line-height: 1.25; letter-spacing: -.04em; text-wrap: wrap; }
 .result-title-link:hover { color: var(--library-accent); }
 .result-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-top: 12px; }
 .result-subline { flex: 1 1 150px; min-width: 0; gap: 4px 10px; margin: 0; font-size: .73rem; }
 .result-subline > span:empty { display: none; }
 .result-subline .youtube-link { min-width: 32px; min-height: 36px; }
 .result-subline .youtube-link img { width: 21px; height: 15px; }
-.result-toolbar { flex: none; gap: 6px; margin: 0; }
+.result-toolbar { flex: none; gap: 6px; margin: 16px 0 0; }
 .result-toolbar .icon-button { border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
 .result-toolbar .icon-button:hover { color: var(--library-accent); background: var(--library-tint); border-color: var(--library-accent); }
 #resultStatus { margin: 12px 0 0; font-size: .75rem; }
