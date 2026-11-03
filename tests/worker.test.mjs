@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {event, storage, scriptContext, run, summary, VIDEO_A, VIDEO_B} from "./helpers.mjs";
 import {videoUrl, HISTORY_FORMAT, summaryConfiguration, DEFAULT_SETTINGS} from "../extension/shared.js";
 
-function worker(seed = {}, tabList = []) {
+function worker(seed = {}, tabList = [], {firefox = false} = {}) {
   const local = storage(seed); const calls = [];
   const tabs = {
     async query() { return structuredClone(tabList); },
@@ -17,9 +17,30 @@ function worker(seed = {}, tabList = []) {
       return {ok: true};
     }
   };
-  const chrome = {storage: {local}, tabs, windows: {async update() {}}, sidePanel: {async setPanelBehavior() {}, async open(options) { calls.push({kind: "panel", options}); }},
+  const chrome = {storage: {local}, tabs, windows: {
+      async get(windowId) {
+        calls.push({kind: "window-get", windowId});
+        const owned = tabList.filter(tab => tab.windowId === windowId);
+        if (!owned.length) throw new Error("Missing window");
+        return {id: windowId, state: "minimized", tabs: structuredClone(owned)};
+      },
+      async update(windowId, patch) { calls.push({kind: "window-update", windowId, patch}); return {id: windowId, ...patch}; },
+      async create(options) {
+        calls.push({kind: "window", ...options});
+        const tab = {id: 80, windowId: 7, url: options.url, pendingUrl: options.url};
+        tabList.push(tab);
+        return {id: 7, state: "normal", tabs: [tab]};
+      }
+    },
+    sidebarAction: {async open() { calls.push({kind: "sidebar", action: "open"}); }, async toggle() { calls.push({kind: "sidebar", action: "toggle"}); }},
+    action: {onClicked: event()},
     runtime: {getURL: value => `chrome-extension://test/${value}`, onInstalled: event(), onStartup: event(), onMessage: event(),
-      async getContexts() { return [{}]; }, async sendMessage() { return {ok: true, ready: true}; }}, alarms: {create() {}, onAlarm: event()}};
+      async sendMessage() { return {ok: true, ready: true}; }}, alarms: {create() {}, onAlarm: event()}};
+  if (!firefox) {
+    chrome.sidePanel = {async setPanelBehavior() {}, async open(options) { calls.push({kind: "panel", options}); }};
+    chrome.offscreen = {async createDocument() { throw new Error("Unexpected offscreen document creation"); }};
+    chrome.runtime.getContexts = async () => [{}];
+  }
   const context = scriptContext("service-worker.js", {chrome});
   return {context, local, calls, chrome, async message(message, sender = {url: "chrome-extension://test/sidepanel.html"}) {
     return new Promise(resolve => {
@@ -415,6 +436,31 @@ test("discarding a failed job preserves summaries and terminal state", async () 
   const late = await run(w.context, `patchJob('failed', {status: 'running'})`);
   assert.equal(late.status, "failed");
   assert.ok(late.dismissedAt);
+});
+
+test("firefox summaries use the sidebar and a minimized worker window", async () => {
+  const w = worker({apiKey: "test"}, [{id: 2, url: videoUrl(VIDEO_A)}], {firefox: true});
+  w.chrome.action.onClicked.listeners[0]();
+  assert.equal(w.calls.at(-1).action, "toggle");
+  const request = w.message({type: "START_PLAYER_JOB", videoId: VIDEO_A}, playerSender());
+  assert.equal(w.calls.at(-1).kind, "sidebar");
+  const response = await request;
+  assert.ok(response.ok, response.error);
+  const created = w.calls.find(call => call.kind === "window");
+  assert.equal(created.type, "popup");
+  assert.equal(created.state, "minimized");
+  assert.equal(created.focused, false);
+  assert.equal(created.url, "chrome-extension://test/offscreen.html");
+  assert.equal(w.calls.find(call => call.kind === "window-update").patch.state, "minimized");
+  assert.equal((await w.message({type: "ENSURE_OFFSCREEN"})).ok, true);
+  assert.equal(w.calls.filter(call => call.kind === "window").length, 1);
+});
+
+test("chrome offscreen setup does not open a firefox worker window", async () => {
+  const w = worker();
+  assert.equal((await w.message({type: "ENSURE_OFFSCREEN"})).ok, true);
+  assert.equal(w.calls.some(call => call.kind === "window"), false);
+  assert.equal(w.chrome.action.onClicked.listeners.length, 0);
 });
 
 test("discard rejects active or missing jobs", async () => {

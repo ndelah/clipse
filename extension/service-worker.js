@@ -1,21 +1,65 @@
 import {loadSettings, summaryConfiguration, sameConfiguration, videoIdFromUrl, videoUrl, parseHistory, mergeSummaries} from "./shared.js";
 const OFFSCREEN_URL = "offscreen.html";
 let creatingOffscreenDocument = null;
+let firefoxWorkerWindowId = null;
 const MAX_JOB_AGE_MS = 12 * 60 * 1000;
 const STALE_JOB_MS = 75 * 1000;
 const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);
 let stateMutationQueue = Promise.resolve();
 
+/**
+ * Chrome can hide extension storage from content scripts. Firefox has no
+ * equivalent, so this is skipped there; content scripts still do not read storage.
+ * @returns {Promise<void>}
+ */
+async function configureExtensionSurface() {
+  if (typeof chrome.storage?.local?.setAccessLevel === "function") {
+    await chrome.storage.local.setAccessLevel({accessLevel: "TRUSTED_CONTEXTS"});
+  }
+  if (typeof chrome.sidePanel?.setPanelBehavior === "function") {
+    await chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true});
+  }
+}
+
+/**
+ * Open the summary UI for a user action.
+ * Chrome uses the side panel. Firefox uses the sidebar, which can only be
+ * opened from a browser user-gesture handler such as the toolbar button.
+ * Page-button messages still attempt it and ignore the expected rejection.
+ * @param {number} windowId
+ * @returns {Promise<void>}
+ */
+function openSummaryPanel(windowId) {
+  if (typeof chrome.sidePanel?.open === "function") {
+    return Promise.resolve(chrome.sidePanel.open({windowId})).catch(() => {});
+  }
+  if (typeof chrome.sidebarAction?.open === "function") {
+    try {
+      return Promise.resolve(chrome.sidebarAction.open()).catch(() => {});
+    } catch {
+      return Promise.resolve();
+    }
+  }
+  return Promise.resolve();
+}
+
+if (typeof chrome.sidePanel?.open !== "function" && chrome.sidebarAction?.toggle && chrome.action?.onClicked) {
+  chrome.action.onClicked.addListener(() => {
+    try {
+      const result = chrome.sidebarAction.toggle();
+      Promise.resolve(result).catch(() => {});
+    } catch { /* Sidebar is unavailable in this window. */ }
+  });
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
-  await chrome.storage.local.setAccessLevel({accessLevel: "TRUSTED_CONTEXTS"});
-  await chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true});
+  await configureExtensionSurface();
   const settings = await loadSettings(chrome.storage.local);
   await chrome.storage.local.set(settings);
 });
 
 chrome.runtime.onStartup.addListener(async () => {
-  await chrome.storage.local.setAccessLevel({accessLevel: "TRUSTED_CONTEXTS"});
-  await chrome.sidePanel.setPanelBehavior({openPanelOnActionClick: true});
+  await configureExtensionSurface();
 });
 
 async function pingOffscreen() {
@@ -26,7 +70,48 @@ async function pingOffscreen() {
   return Boolean(response?.ok && response?.ready);
 }
 
-async function ensureOffscreenDocument() {
+/**
+ * Chrome offscreen documents are unavailable in Firefox. The same offscreen
+ * page runs in a minimized extension window so OpenAI work continues after
+ * the sidebar closes and can wake the event page with messages.
+ * @returns {boolean}
+ */
+function supportsOffscreenDocuments() {
+  return typeof chrome.runtime.getContexts === "function" && typeof chrome.offscreen?.createDocument === "function";
+}
+
+/**
+ * @param {string} offscreenUrl
+ * @param {{url?: string, pendingUrl?: string}|null|undefined} tab
+ * @returns {boolean}
+ */
+function tabIsOffscreen(offscreenUrl, tab) {
+  const url = tab?.pendingUrl || tab?.url || "";
+  return url === offscreenUrl;
+}
+
+/**
+ * @param {string} offscreenUrl
+ * @returns {Promise<boolean>}
+ */
+async function firefoxWorkerWindowOpen(offscreenUrl) {
+  if (firefoxWorkerWindowId === null) return false;
+  try {
+    const win = await chrome.windows.get(firefoxWorkerWindowId, {populate: true});
+    const tabs = win?.tabs || [];
+    if (tabs.some(tab => tabIsOffscreen(offscreenUrl, tab))) return true;
+    // A just-created window may not have committed its extension URL yet.
+    if (tabs.length === 1 && !(tabs[0].pendingUrl || tabs[0].url)) return true;
+  } catch {
+    firefoxWorkerWindowId = null;
+  }
+  return false;
+}
+
+/**
+ * @returns {Promise<void>}
+ */
+async function ensureChromeOffscreenDocument() {
   const offscreenUrl = chrome.runtime.getURL(OFFSCREEN_URL);
   const contexts = await chrome.runtime.getContexts({
     contextTypes: ["OFFSCREEN_DOCUMENT"],
@@ -45,6 +130,48 @@ async function ensureOffscreenDocument() {
     }
     await creatingOffscreenDocument;
   }
+}
+
+/**
+ * @returns {Promise<void>}
+ */
+async function ensureFirefoxWorkerWindow() {
+  const offscreenUrl = chrome.runtime.getURL(OFFSCREEN_URL);
+  if (await firefoxWorkerWindowOpen(offscreenUrl)) return;
+  const tabs = await chrome.tabs.query({});
+  const existing = tabs.find(tab => tabIsOffscreen(offscreenUrl, tab));
+  if (existing?.windowId !== undefined) {
+    firefoxWorkerWindowId = existing.windowId;
+    return;
+  }
+
+  if (!creatingOffscreenDocument) {
+    creatingOffscreenDocument = chrome.windows.create({
+      url: offscreenUrl,
+      type: "popup",
+      focused: false,
+      state: "minimized",
+      width: 420,
+      height: 240
+    }).then(async created => {
+      firefoxWorkerWindowId = created?.id ?? null;
+      if (created?.id && created.state !== "minimized") {
+        await chrome.windows.update(created.id, {state: "minimized"}).catch(() => {});
+      }
+      return created;
+    }).finally(() => {
+      creatingOffscreenDocument = null;
+    });
+  }
+  await creatingOffscreenDocument;
+}
+
+/**
+ * @returns {Promise<void>}
+ */
+async function ensureOffscreenDocument() {
+  if (supportsOffscreenDocuments()) await ensureChromeOffscreenDocument();
+  else await ensureFirefoxWorkerWindow();
 
   let lastError = null;
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -561,18 +688,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
     if (message.type === "START_THUMBNAIL_JOB") {
-      panelOpening = chrome.sidePanel.open({windowId: sender.tab.windowId}).catch(() => {});
+      panelOpening = openSummaryPanel(sender.tab.windowId);
     }
   }
   if (["START_PLAYER_JOB", "GET_PLAYER_STATUS"].includes(message?.type)) {
-    // Derive the target from Chrome's sender, never a page-supplied tab ID.
+    // Derive the target from the browser's sender, never a page-supplied tab ID.
     if (!fromContent || sender.frameId !== 0 || videoIdFromUrl(sender.url) !== message.videoId) {
       sendResponse({ok: false, error: "Open this YouTube video and try again."});
       return false;
     }
     if (message.type === "START_PLAYER_JOB") {
       // Must happen before any await to preserve the button's user gesture.
-      panelOpening = chrome.sidePanel.open({windowId: sender.tab.windowId}).catch(() => {});
+      panelOpening = openSummaryPanel(sender.tab.windowId);
     }
   }
 

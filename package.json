@@ -2,11 +2,12 @@
   "name": "clipse",
   "version": "0.8.2",
   "private": true,
-  "description": "Clipse \u2014 a transcript-based YouTube video summarizer for Chrome.",
+  "description": "Clipse \u2014 a transcript-based YouTube video summarizer for Chrome and Firefox.",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "sync:firefox": "node scripts/sync-firefox.mjs",
     "check": "node scripts/check.mjs",
     "package": "npm run check && node scripts/package.mjs",
     "test": "node --test",
