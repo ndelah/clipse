@@ -1,4 +1,4 @@
-# Current features: v0.8.3
+# Current features: v0.9.0
 
 > This inventory describes the earlier implementation. See [the UI redesign](ui-redesign.md) for the current navigation, evidence, caption selection, library controls, and validation boundaries.
 
@@ -6,12 +6,11 @@ Implementation inventory. Focused regression checks use mocked browser and API b
 
 ## Summaries and reading
 
-- One-sentence overview and watch recommendation first, timestamped takeaways next.
-- Expandable prose summary and learning outcomes; secondary content type, difficulty, and information-density estimates.
-- Brief output requests 1–2 short paragraphs and up to three takeaways/outcomes. Detailed requests 3–6 compact paragraphs, proportionate to the substance.
+- One-sentence overview first, then the full summary as a goal-based Markdown document (see [Summary formats](summary-formats.md)), then collapsible timestamped takeaways.
+- Brief output keeps only each format's essential sections and up to three takeaways/outcomes. Detailed output includes every section the source supports.
 - Configurable output language, independent of YouTube's caption language.
 - Configurable OpenAI model, defaulting to `gpt-4.1-mini`.
-- Copy summary as Markdown and export a Markdown file, including the source video and video-specific timestamp links.
+- Copy summary as Markdown and export a Markdown file, including the source video and timestamp links on key takeaways.
 - Saved-summary timestamps find/open the correct video. Content scripts reject mismatched video IDs.
 - Regenerate targets the displayed video, opening it in a background tab if needed.
 - Saved reading stays stable through tab/navigation/storage updates. A back-to-History control returns to browsing; the panel opens to history without Video/History tabs.
@@ -37,7 +36,7 @@ Implementation inventory. Focused regression checks use mocked browser and API b
 - Local profile history stores the latest summary per video ID and presents newest first.
 - Search by title, channel, overview, or full summary.
 - Read, open source, delete individual records, or clear all. Summaries enter history automatically; there is no separate Save feature or Saved filter.
-- Summary actions use copy and Markdown download icons below the summary text. Takeaways have plain text without dividers; only timestamps are clickable. Caption metadata lives in About this video, with no source dropdowns or duplicate playback links.
+- Summary actions use copy and Markdown download icons at the top. Takeaways have plain text without dividers; only timestamps are clickable. Caption language, caption type, and transcript limitations appear as one quiet note at the bottom of the header card, with no source dropdowns or duplicate playback links.
 - Persistent single-level undo for deletion/clear. Undo preserves summaries saved or imported more recently. Deleted records remain locally available for undo until the next deletion or restoration.
 - Versioned JSON backup/import; compatible with `video-preview-history` version 1.
 - Imports validate supported fields, dates, YouTube IDs/links, and takeaway shapes; report skipped records. File selection is limited to 10 MB.

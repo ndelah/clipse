@@ -25,8 +25,10 @@
 }
 .clipse-thumbnail-host:hover > .clipse-thumbnail-button,
 .clipse-thumbnail-host:focus-within > .clipse-thumbnail-button,
+.clipse-thumbnail-button.clipse-thumbnail-preview,
 .clipse-thumbnail-button[data-state="running"],
 .clipse-thumbnail-button[data-state="failed"] { opacity: 1; }
+.clipse-thumbnail-button.clipse-thumbnail-preview { z-index: 2147483647; }
 .clipse-thumbnail-button:hover { background: #303030; }
 .clipse-thumbnail-button:focus-visible { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; }
 .clipse-thumbnail-button:disabled { cursor: progress; }

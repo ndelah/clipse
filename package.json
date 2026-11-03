@@ -1,6 +1,6 @@
 {
   "name": "clipse",
-  "version": "0.8.3",
+  "version": "0.9.0",
   "private": true,
   "description": "Clipse \u2014 a transcript-based YouTube video summarizer for Chrome and Firefox.",
   "engines": {
@@ -8,11 +8,24 @@
   },
   "scripts": {
     "sync:firefox": "node scripts/sync-firefox.mjs",
-    "check": "node scripts/check.mjs",
+    "check": "npm run build:summary-ui && npm run build:vendor && node scripts/check.mjs",
     "package": "npm run check && node scripts/package.mjs",
     "test": "node --test",
     "check:ui": "node scripts/ui-check.mjs",
-    "icons:generate": "node scripts/icons.mjs"
+    "icons:generate": "node scripts/icons.mjs",
+    "build:summary-ui": "node scripts/build-summary-ui.mjs",
+    "build:vendor": "node scripts/build-vendor.mjs"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@json-render/core": "^0.21.1",
+    "@json-render/react": "^0.21.1",
+    "knap": "^0.6.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
 }

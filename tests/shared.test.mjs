@@ -65,3 +65,10 @@ test("summary paragraphs preserve explicit breaks and reflow long saved blocks a
   const chinese = "这个工具帮助初学者理解电路原理并练习设计。".repeat(40);
   assert.equal(summaryParagraphs(chinese).join(""), chinese);
 });
+
+test("topic tags are cleaned and capped, and malformed tags never reject a summary", () => {
+  const record = summary(); record.preview.topics = [" #Bread ", "Bread", 7, "", "Yeast", "Ovens", "Flour", "Salt"];
+  assert.deepEqual(normalizeSummary(record).preview.topics, ["Bread", "Yeast", "Ovens", "Flour"]);
+  const broken = summary(); broken.preview.topics = "not a list";
+  assert.equal(normalizeSummary(broken).preview.topics, undefined);
+});

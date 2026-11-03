@@ -2,7 +2,7 @@
 (() => {
   const cards = "ytd-rich-grid-media, ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer, yt-lockup-view-model, .yt-lockup-view-model";
   const entries = new Map();
-  let mountTimer = null;
+  let mountTimer = null, preview = null, previewEntry = null;
 
   function videoForCard(card) {
     for (const link of card.querySelectorAll("a[href*='/watch?'], a[href*='/shorts/'], a[href*='/live/']")) {
@@ -50,8 +50,12 @@
     if (!event.isTrusted || entry.busy || !current(entry) || !runtimeIsAvailable()) return;
     entry.busy = true;
     label(entry, "Clipse: starting summary", "running");
-    const title = entry.card.querySelector("#video-title, .yt-lockup-metadata-view-model__title, [role='heading']")?.textContent?.trim();
-    const response = await safelySendRuntimeMessage({type: "START_THUMBNAIL_JOB", videoId: entry.videoId, title});
+    const heading = entry.card.querySelector("#video-title, .yt-lockup-metadata-view-model__title, [role='heading'], h3 a, h3");
+    // Some cards render the visible text lazily; the title attribute is set up front.
+    const title = heading?.textContent?.trim() || heading?.getAttribute?.("title")?.trim() || undefined;
+    const author = entry.card.querySelector("ytd-channel-name #text, ytd-channel-name a, .yt-lockup-metadata-view-model__metadata a[href^='/@'], .yt-lockup-metadata-view-model__metadata a[href^='/channel/'], .yt-content-metadata-view-model__metadata-row a");
+    const channel = author?.textContent?.trim() || undefined;
+    const response = await safelySendRuntimeMessage({type: "START_THUMBNAIL_JOB", videoId: entry.videoId, title, ...(channel ? {channel} : {})});
     if (!current(entry)) return;
     entry.busy = false;
     if (!response?.ok) {
@@ -59,8 +63,49 @@
     } else await updateStatus(entry);
   }
 
+  function unlend(entry) {
+    entry.button.classList.remove("clipse-thumbnail-preview");
+    entry.button.style.top = entry.button.style.left = "";
+    if (entry.button.parentElement !== entry.host) entry.host.appendChild(entry.button);
+  }
+
+  // YouTube's hover preview mounts outside the card, above the page's stacking
+  // context, and covers the thumbnail after ~500ms. Lend the covered card's button
+  // to the preview while it plays so it stays visible and clickable.
+  function syncPreview() {
+    const box = preview?.isConnected ? preview.getBoundingClientRect() : null;
+    let target = null;
+    if (box?.width && box.height) {
+      for (const entry of entries.values()) {
+        const rect = entry.host.getBoundingClientRect();
+        const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+        if (rect.width && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) { target = entry; break; }
+      }
+    }
+    if (previewEntry && previewEntry !== target && entries.get(previewEntry.card) === previewEntry) unlend(previewEntry);
+    previewEntry = target;
+    if (!target) return;
+    const rect = target.host.getBoundingClientRect();
+    target.button.style.top = `${Math.max(8, rect.top - box.top + 8)}px`;
+    target.button.style.left = `${Math.max(8, rect.left - box.left + 8)}px`;
+    target.button.classList.add("clipse-thumbnail-preview");
+    if (target.button.parentElement !== preview) preview.appendChild(target.button);
+  }
+
+  const previewObserver = new MutationObserver(syncPreview);
+
+  function watchPreview() {
+    const found = document.querySelector("ytd-video-preview");
+    if (found === preview) return;
+    previewObserver.disconnect();
+    preview = found;
+    if (preview) previewObserver.observe(preview, {attributes: true, attributeFilter: ["class", "style", "hidden"]});
+    syncPreview();
+  }
+
   function remove(entry) {
     clearTimeout(entry.pollTimer);
+    if (previewEntry === entry) previewEntry = null;
     entry.button.remove();
     entry.host.classList.remove("clipse-thumbnail-host");
     entries.delete(entry.card);
@@ -69,6 +114,7 @@
   function mount() {
     if (!runtimeIsAvailable()) {
       observer.disconnect();
+      previewObserver.disconnect();
       for (const entry of entries.values()) remove(entry);
       return;
     }
@@ -104,6 +150,7 @@
       host.classList.add("clipse-thumbnail-host");
       host.appendChild(button);
     }
+    watchPreview();
   }
 
   const observer = new MutationObserver(() => {

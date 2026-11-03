@@ -1,4 +1,7 @@
+import {RECIPE_SCHEMA, RECIPE_GUIDANCE} from "./recipe.js";
 import {attachEvidence, segmentId} from "./evidence.js";
+import {categoryFormat, formatGuidance, formatSchema} from "./formats.js";
+import {renderFormat} from "./format-render.js";
 import {summaryConfiguration} from "./shared.js";
 import {classificationText, classificationQuestions, classificationSchema, normalizeClassification, routingInstructions, JEV_MODEL, ROUTING_CONFIDENCE} from "./routing.js";
 
@@ -408,12 +411,8 @@ const PREVIEW_SCHEMA = {
   additionalProperties: false,
   properties: {
     one_sentence_summary: {type: "string"},
-    full_summary: {type: "string", description: "Readable prose paragraphs separated by a blank line (two newline characters). Each paragraph covers one main idea."},
+    topics: {type: "array", items: {type: "string"}},
     learning_outcomes: {type: "array", items: {type: "string"}},
-    content_type: {type: "string"}, // Narrowed to the selected category when the summary is requested.
-    level: {type: "string", enum: ["beginner", "intermediate", "advanced", "mixed"]},
-    useful_content_density: {type: "string", enum: ["low", "medium", "high"]},
-    worth_watching: {type: "string"},
     key_takeaways: {
       type: "array",
       items: {
@@ -430,12 +429,8 @@ const PREVIEW_SCHEMA = {
   },
   required: [
     "one_sentence_summary",
-    "full_summary",
+    "topics",
     "learning_outcomes",
-    "content_type",
-    "level",
-    "useful_content_density",
-    "worth_watching",
     "key_takeaways"
   ]
 };
@@ -458,12 +453,12 @@ const SECTION_SCHEMA = {
 const SYSTEM_PROMPT = `You analyze video transcripts for a viewer deciding whether a video deserves their time.
 Be concrete, skeptical, concise, and faithful to the transcript.
 Describe the actual substance and what the viewer gains from watching, not merely the topic. For non-educational content, do not force learning outcomes; return an empty learning_outcomes array when appropriate.
-Also write a proper standalone summary that preserves the video's main substance and structure in coherent prose, following the selected category's guidance. Follow the requested summary length and output language.
+Also fill the standalone summary's fields with the video's main substance, following the requested summary format and the selected category's guidance. Follow the requested summary length and output language.
+List 2 to 4 topic tags in topics: specific subjects of the video, 1 to 3 words each, in the output language, without # or punctuation.
 Never invent visual demonstrations absent from the transcript.
-Describe who benefits from watching and why; avoid universal judgments of worth.
 For every key takeaway, select a source_segment_id from the supplied transcript or section notes that supports the takeaway. Never invent IDs; use null when no supporting segment is available.
 Intermediate section notes must preserve original source_segment_ids alongside their substantive points so final synthesis can cite the original transcript.
-Preserve useful timestamps and use integer seconds.
+Timestamps belong only in key takeaways; use integer seconds there.
 When captions appear unreliable, qualify uncertain details directly in the summary instead of adding a separate caveats section.`;
 
 function extractResponseText(data) {
@@ -476,12 +471,16 @@ function extractResponseText(data) {
   throw new Error("OpenAI returned no text output.");
 }
 
-async function callOpenAI({apiKey, model, prompt, schema, schemaName, jobId, configuration, guidance = ""}) {
+async function callOpenAI({apiKey, model, prompt, schema, schemaName, jobId, configuration, guidance = "", markdown = false}) {
   const config = summaryConfiguration(configuration);
-  const lengthInstruction = config.summaryLength === "brief"
-    ? "Keep the full summary to 1–2 short paragraphs, with at most 3 learning outcomes and 3 key takeaways."
-    : "Write 3–6 compact summary paragraphs, proportionate to the substance, and include the important learning outcomes and key takeaways.";
-  const paragraphInstruction = "In full_summary, separate paragraphs with two newline characters. Give each paragraph one main idea; do not combine the summary into one long block.";
+  const lengthInstruction = markdown
+    ? config.summaryLength === "brief"
+      ? "Keep the summary short: fill only the essential summary_fields, each as compact as possible, with at most 3 learning outcomes and 3 key takeaways."
+      : "Make the summary complete but proportionate to the substance: fill every summary field the source supports, and include the important learning outcomes and key takeaways."
+    : config.summaryLength === "brief"
+      ? "Keep the full summary to 1–2 short paragraphs, with at most 3 learning outcomes and 3 key takeaways."
+      : "Write 3–6 compact summary paragraphs, proportionate to the substance, and include the important learning outcomes and key takeaways.";
+  const paragraphInstruction = markdown ? "" : "In full_summary, separate paragraphs with two newline characters. Give each paragraph one main idea; do not combine the summary into one long block.";
   const response = await fetchWithTimeout("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -565,9 +564,18 @@ async function createPreview(transcript, settings, updateProgress, jobId, metada
   await updateProgress("Choosing summary approach", 23);
   const classification = await classifyVideo(completeText, settings, jobId, metadata);
   await assertNotCancelled(jobId);
-  const guidance = routingInstructions(classification, config.categories);
-  const previewSchema = {...PREVIEW_SCHEMA, properties: {...PREVIEW_SCHEMA.properties,
-    content_type: {type: "string", enum: [classification.categoryName]}}};
+  const isRecipe = classification.categoryId === "recipes";
+  const guidance = routingInstructions(classification, config.categories) + (isRecipe ? `\n${RECIPE_GUIDANCE}` : "");
+  const format = categoryFormat(config.categories.find(category => category.id === classification.categoryId));
+  const summaryGuidance = `${guidance}\n${formatGuidance(format)}`;
+  const previewSchema = {...PREVIEW_SCHEMA, properties: {...PREVIEW_SCHEMA.properties, summary_fields: formatSchema(format),
+    ...(isRecipe ? {recipe: RECIPE_SCHEMA} : {})},
+    required: [...PREVIEW_SCHEMA.required, "summary_fields", ...(isRecipe ? ["recipe"] : [])]};
+  // The model fills only the fields the source supports; the format's template renders just those.
+  const finish = async preview => {
+    const {summary_fields: fields, ...rest} = preview;
+    return attachEvidence(applyClassification(Object.assign(rest, {format, full_summary: await renderFormat(format, fields)}), classification), transcript.segments);
+  };
   const captionNote = transcript.isGenerated === true
     ? "Captions are automatically generated. Qualify likely transcription uncertainty."
     : transcript.isGenerated === false ? "YouTube identifies these as manual captions."
@@ -581,11 +589,12 @@ async function createPreview(transcript, settings, updateProgress, jobId, metada
       configuration: settings,
       schema: previewSchema,
       schemaName: "video_preview",
-      guidance,
+      guidance: summaryGuidance,
+      markdown: true,
       jobId,
       prompt: `Create both a decision-oriented preview and a proper standalone summary from this complete transcript.\n\nCaption note: ${captionNote}\n\nTRANSCRIPT\n${completeText}`
     });
-    return attachEvidence(applyClassification(preview, classification), transcript.segments);
+    return finish(preview);
   }
 
   const chunks = chunkTranscript(transcript.segments);
@@ -611,11 +620,12 @@ async function createPreview(transcript, settings, updateProgress, jobId, metada
       configuration: settings,
     schema: previewSchema,
     schemaName: "video_preview",
-    guidance,
+    guidance: summaryGuidance,
+    markdown: true,
     jobId,
     prompt: `Create the final decision-oriented preview and a proper standalone summary from these chronological notes covering the complete video.\n\nCaption note: ${captionNote}\n\nSECTION NOTES\n${JSON.stringify(notes)}`
   });
-  return attachEvidence(applyClassification(preview, classification), transcript.segments);
+  return finish(preview);
 }
 
 async function processJob(jobId) {

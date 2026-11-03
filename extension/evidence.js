@@ -1,3 +1,5 @@
+import {attachRecipeEvidence} from "./recipe.js";
+import {stripCitations} from "./markdown.js";
 // Only excerpts selected from the extracted transcript become displayed evidence.
 export function segmentId(index) { return `S${index}`; }
 
@@ -12,5 +14,7 @@ export function attachEvidence(preview, segments) {
     return {text: item.text, timestamp_seconds: seconds,
       source: {segmentId: item.source_segment_id, startSeconds: seconds, text: String(segment.text).slice(0, 800)}};
   });
+  if (preview.format) preview.full_summary = stripCitations(preview.full_summary);
+  if (preview.recipe !== undefined) preview.recipe = attachRecipeEvidence(preview.recipe, segments);
   return preview;
 }

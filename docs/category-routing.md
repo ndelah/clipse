@@ -30,7 +30,7 @@ Both the side panel settings and standalone options page support adding, editing
 | Fiction and scripted storytelling | Films, episodes, animation, narrative sketches | Setting, characters, motivations, plot, conflict, turns, ending, explicit spoiler labels |
 | Live performances | Music, comedy, theatre, dance, spoken word | Performer, act type, segment order, themes, moments, audience interaction, supported performance details |
 
-All summaries preserve useful timestamps, consequential numbers and units, attribution, and uncertainty. Missing details stay missing, including visual, musical, and code details absent from captions. Non-educational content can return no learning outcomes.
+All summaries preserve consequential numbers and units, attribution, and uncertainty. Missing details stay missing, including visual, musical, and code details absent from captions. Non-educational content can return no learning outcomes.
 
 Existing profiles with the exact untouched six-category starter set plus Other upgrade when settings are loaded. Any edited, removed, or added category preserves the existing set. Saved results and in-flight job configurations retain their original categories; the changed category set invalidates cache compatibility until regeneration.
 
@@ -42,7 +42,7 @@ Selecting Jev requires a separate TypeSafe key. One request to `POST https://api
 
 Both classifiers receive a bounded transcript state plus title and channel when available. Up to 18,000 transcript characters are sent in full; longer transcripts use eight equally spaced character windows covering the beginning, middle, and end. Sampling can miss a format change. The summary and section-analysis stages still receive all transcript text. Sampled classification is identified in the saved metadata and result UI.
 
-Category definitions are used only for classification. The chosen category's summary instructions guide both short-video summaries and long-video section notes and final synthesis. Guidance explicitly asks the model to preserve substantive material outside the primary format as well. The final content-type schema is narrowed to the actual chosen category name, allowing custom categories.
+Each category also selects a goal-based summary format that sets the Markdown layout; see [Summary formats](summary-formats.md). Category definitions are used only for classification. The chosen category's summary instructions guide both short-video summaries and long-video section notes and final synthesis. Guidance explicitly asks the model to preserve substantive material outside the primary format as well. The final content-type schema is narrowed to the actual chosen category name, allowing custom categories.
 
 ## Independent scores
 

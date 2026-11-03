@@ -55,12 +55,12 @@ test("click starts automatically and running/completed status follows the video"
   const f = fixture(); await settle();
   f.setStatus("running"); await f.button().click();
   assert.equal(f.messages.find(message => message.type === "START_PLAYER_JOB").videoId, VIDEO_A);
-  assert.equal(f.button().disabled, true);
+  assert.equal(f.button().dataset.state, "running");
   assert.equal(f.button().getAttribute("aria-busy"), "true");
   f.setStatus("completed");
   for (const callback of [...f.timers.values()]) callback();
   await settle();
-  assert.equal(f.button().disabled, false);
+  assert.equal(f.button().dataset.state, "completed");
   assert.match(f.button().title, /saved in history/);
   f.navigate(VIDEO_B); await settle();
   await f.button().click();
@@ -73,10 +73,35 @@ test("synthetic clicks cannot generate, and errors allow a user retry", async ()
   assert.equal(f.messages.some(message => message.type === "START_PLAYER_JOB"), false);
   f.setResponse({ok: false, error: "Add your API key in Settings"});
   await f.button().click();
-  assert.equal(f.button().disabled, false);
+  assert.equal(f.button().dataset.state, "failed");
   assert.match(f.button().title, /API key/);
   f.setResponse({ok: true}); await f.button().click();
   assert.equal(f.messages.filter(message => message.type === "START_PLAYER_JOB").length, 2);
+});
+
+test("clicking a running summary restarts it instead of doing nothing", async () => {
+  const f = fixture(); await settle();
+  f.setStatus("running"); await f.button().click();
+  const first = f.messages.filter(message => message.type === "START_PLAYER_JOB");
+  assert.equal(first[0].restart, false);
+  assert.match(f.button().title, /Click to restart/);
+  await f.button().click();
+  const starts = f.messages.filter(message => message.type === "START_PLAYER_JOB");
+  assert.equal(starts.length, 2);
+  assert.equal(starts[1].restart, true);
+});
+
+test("a click while the first start is still pending restarts, and only the latest response labels the button", async () => {
+  const f = fixture(); await settle();
+  let release;
+  f.setResponse(new Promise(resolve => { release = resolve; }));
+  const first = f.button().click();
+  await settle();
+  f.setResponse({ok: false, error: "Second attempt failed"});
+  await f.button().click();
+  assert.equal(f.messages.filter(message => message.type === "START_PLAYER_JOB").at(-1).restart, true);
+  release({ok: true}); await first; await settle();
+  assert.match(f.button().title, /Second attempt failed/);
 });
 
 test("players without a control row get an overlay and leaving video pages removes it", async () => {

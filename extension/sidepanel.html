@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Clipse</title><link rel="stylesheet" href="sidepanel.css"><link rel="stylesheet" href="settings.css"><link rel="stylesheet" href="library.css"><link rel="stylesheet" href="summary.css"></head>
 <body>
-  <header class="topbar"><img class="brand-mark" src="assets/eclipse.svg" alt="" width="28" height="28"><h1>Clipse</h1><button id="settingsButton" class="text-button header-settings" aria-label="Open settings">Settings</button></header>
+  <header class="topbar"><h1 class="sr-only">Clipse</h1><button id="settingsButton" class="text-button header-settings" type="button" aria-label="Open settings" aria-expanded="false">Settings</button></header>
   <p id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
 
   <main>
@@ -24,22 +24,21 @@
         <header class="result-header summary-card">
           <h2 class="result-title"><a id="videoTitleLink" class="result-title-link" target="_blank" rel="noreferrer"></a></h2>
           <div class="result-context">
-            <div class="result-subline"><span id="resultChannel"></span><span id="resultDuration"></span><a id="videoLink" class="youtube-link" target="_blank" rel="noreferrer" aria-label="Open video on YouTube" title="Open video on YouTube"><img src="icons/youtube.svg" width="28" height="20" alt=""></a></div>
+            <div class="result-subline"><span id="resultChannel"></span><span id="resultDuration"></span></div>
+            <div class="result-toolbar" role="group" aria-label="Summary actions">
+              <a id="videoLink" class="icon-button" target="_blank" rel="noreferrer" aria-label="Open video on YouTube" title="Open video on YouTube"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="m10 9 5 3-5 3z"/></svg></a>
+              <button id="copySummaryButton" class="icon-button" type="button" aria-label="Copy summary" title="Copy summary"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg></button>
+              <button id="saveObsidianButton" class="icon-button" type="button" aria-label="Save to Obsidian" title="Save to Obsidian"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5 5 9l2.5 10.5L14 22l4.5-5.5L16 6z"/><path d="M9.5 2.5 12 13l2 9M5 9l7 4 4-7"/></svg></button>
+              <button id="saveNotionButton" class="icon-button" type="button" aria-label="Save to Notion" title="Save to Notion"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8.5 16.5v-9l7 9v-9"/></svg></button>
+              <button id="exportMarkdownButton" class="icon-button" type="button" aria-label="Download Markdown" title="Download Markdown"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg></button>
+              <button id="refreshButton" class="icon-button" type="button" aria-label="Regenerate summary" title="Regenerate summary"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8.5"/><path d="M20 3.5v5h-5"/></svg></button>
+            </div>
           </div>
           <p id="resultStatus" class="status-message muted" role="status"></p>
           <p id="oneSentenceSummary" class="lead-summary"></p>
-          <p id="worthWatching" class="recommendation"></p>
-          <div class="result-toolbar" role="group" aria-label="Summary actions">
-            <button id="copySummaryButton" class="icon-button" type="button" aria-label="Copy summary" title="Copy summary"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg></button>
-            <button id="exportMarkdownButton" class="icon-button" type="button" aria-label="Download Markdown" title="Download Markdown"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg></button>
-          </div>
         </header>
+        <details id="fullSummarySection" class="summary-card" aria-labelledby="fullSummaryHeading"><summary><h2 id="fullSummaryHeading" class="summary-card-heading"><span class="summary-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="section-label">Full summary</span></h2></summary><div id="fullSummary" class="full-summary"></div></details>
         <details id="takeawaysSection" class="summary-card" aria-labelledby="takeawaysHeading"><summary><h2 id="takeawaysHeading" class="summary-card-heading"><span class="summary-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 7 2 2 4-4m3 2h7M4 16l2 2 4-4m3 2h7"/></svg></span><span class="section-label">Key takeaways</span></h2></summary><div id="keyTakeaways"></div></details>
-        <div class="summary-details">
-          <details id="fullSummarySection"><summary>Full summary</summary><div id="fullSummary" class="full-summary"></div></details>
-          <details id="aboutVideo"><summary>About this video</summary><p id="transcriptInfo" class="provenance muted small"></p><div class="meta-row" aria-label="AI estimates"><span id="contentType" class="pill"></span><span id="level" class="pill"></span><span id="density" class="pill"></span><span id="specificity" class="pill hidden"></span></div><p id="classificationNote" class="muted small"></p><p class="muted small">Difficulty estimates assumed knowledge. Information density estimates how much of the video adds substance. Instruction specificity describes how concrete its guidance is. These are AI estimates, independent of your experience.</p><p class="muted small">Based on captions, which may contain errors. Visual demonstrations are not analyzed.</p></details>
-        </div>
-        <footer id="resultFooter"><span>In your history</span><button id="refreshButton" class="text-button">Regenerate</button></footer>
       </article>
     </section>
     <section id="onboardingView" class="onboarding hidden" aria-labelledby="onboardingIntroHeading" aria-roledescription="carousel">
@@ -81,6 +80,17 @@
         <li><span class="step-number" aria-hidden="true">1</span><div><strong>Clipse is free. The AI is pay-as-you-go.</strong><p>No Clipse subscription. Connect your OpenAI API key and pay your provider directly for what you use. Jev is optional for video classification.</p></div></li>
         <li><span class="step-number" aria-hidden="true">2</span><div><strong>Find a video. Click Clipse.</strong><p>Use Clipse in the video player or on a thumbnail. Your summary will be saved here.</p></div></li>
       </ol>
+      <fieldset class="onboarding-destinations" aria-describedby="destinationsHelp">
+        <legend>Where will your notes go?</legend>
+        <p id="destinationsHelp" class="muted">Pick any. Clipse shows only these buttons; you can change this in Settings.</p>
+        <div class="settings-choices">
+          <label class="settings-choice"><input id="onboardCopy" type="checkbox" value="copy"><span>Copy to clipboard</span></label>
+          <label class="settings-choice"><input id="onboardDownload" type="checkbox" value="download"><span>Download Markdown</span></label>
+          <label class="settings-choice"><input id="onboardObsidian" type="checkbox" value="obsidian"><span>Obsidian</span></label>
+          <label class="settings-choice"><input id="onboardNotion" type="checkbox" value="notion"><span>Notion</span></label>
+        </div>
+        <p id="onboardingNotionNote" class="onboarding-notion-note hidden">Notion needs a free integration. Set up Clipse opens Settings with the steps and links.</p>
+      </fieldset>
       <div class="onboarding-actions"><button id="setupButton" class="primary-button">Set up Clipse <span aria-hidden="true">→</span></button><button id="dismissOnboardingButton" class="text-button">Skip for now</button></div>
       <section class="onboarding-faq" aria-labelledby="faqHeading">
         <h3 id="faqHeading">A few things to know</h3>
@@ -92,9 +102,15 @@
       </div>
       <p id="onboardingStatus" class="status-message muted" role="status"></p>
     </section>
-    <section id="historyView" class="hidden" aria-labelledby="historyHeading">
-      <div class="library-heading"><div><h2 id="historyHeading">History</h2><p>Your videos, distilled.</p></div><span id="historyCount" class="library-count" role="status" aria-live="polite"></span></div>
-      <label class="sr-only" for="historySearch">Search history</label><div class="library-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="historySearch" type="search" placeholder="Search your videos" aria-controls="historyList"></div>
+    <section id="historyView" class="hidden" aria-label="History">
+      <div class="library-toolbar">
+        <label class="sr-only" for="historySearch">Search history</label><div class="library-search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="historySearch" type="search" placeholder="Search titles, channels, and content" aria-controls="historyList"></div>
+        <div class="library-filters">
+          <label class="sr-only" for="channelFilter">Filter by channel</label><select id="channelFilter" class="library-filter" aria-controls="historyList"><option value="">All channels</option></select>
+          <label class="sr-only" for="categoryFilter">Filter by category</label><select id="categoryFilter" class="library-filter" aria-controls="historyList"><option value="">All categories</option></select>
+          <span id="historyCount" class="library-count" role="status" aria-live="polite"></span>
+        </div>
+      </div>
       <div class="undo-row library-notice"><p id="historyStatus" class="status-message muted" role="status"></p><button id="undoHistoryButton" class="text-button hidden">Undo deletion</button></div>
       <div id="historyList"></div><p id="emptyHistory" class="muted hidden">Your summarized videos will appear here.</p>
     </section>
@@ -124,10 +140,33 @@
           <p class="settings-note">Applies to new summaries. Regenerate a saved summary to update it.</p>
         </section>
 
+        <section class="settings-card" aria-labelledby="exportHeading">
+          <div class="settings-card-heading"><span class="settings-symbol"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m-4-4 4 4 4-4M5 19h14"/></svg></span><h3 id="exportHeading">Your notes</h3></div>
+          <p class="settings-description">Where your summaries go. Clipse shows only these buttons.</p>
+          <fieldset class="settings-choices"><legend class="sr-only">Note destinations</legend>
+            <label class="settings-choice"><input id="exportCopy" type="checkbox" value="copy"><span>Copy to clipboard</span></label>
+            <label class="settings-choice"><input id="exportDownload" type="checkbox" value="download"><span>Download Markdown</span></label>
+            <label class="settings-choice"><input id="exportObsidian" type="checkbox" value="obsidian"><span>Obsidian</span></label>
+            <label class="settings-choice"><input id="exportNotion" type="checkbox" value="notion"><span>Notion</span></label>
+          </fieldset>
+        </section>
+
         <div class="settings-advanced-group">
           <details id="categoriesSettings" class="settings-disclosure"><summary><span><strong>Summary categories</strong><span class="settings-summary-help">Tailor what each kind of video keeps.</span></span></summary><div class="settings-disclosure-body"><p class="settings-help">Edit the category definitions and what their summaries should preserve. Changes apply after saving, to new or regenerated summaries.</p><div id="categoryList"></div><button id="addCategoryButton" class="secondary-button compact" type="button">+ Add category</button></div></details>
           <details id="classificationSettings" class="settings-disclosure"><summary><span><strong>Video classification</strong><span class="settings-summary-help">Uses OpenAI by default. Jev is optional.</span></span></summary><div class="settings-disclosure-body"><div class="settings-field"><label for="classifierProvider">Classification provider</label><select id="classifierProvider" aria-describedby="classificationHelp"><option value="openai">OpenAI · use my existing key</option><option value="jev">Jev · TypeSafe</option></select><p id="classificationHelp" class="settings-help">Identifies the category, assumed knowledge, information density, and instruction specificity before summarizing.</p></div><div id="jevSettings" class="provider-settings hidden"><div class="settings-field"><div class="settings-label-row"><label for="jevApiKey">TypeSafe API key</label><a class="settings-link" href="https://console.typesafe.ai/" target="_blank" rel="noreferrer">Get a key <span aria-hidden="true">↗</span></a></div><div class="secret-row"><input id="jevApiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your TypeSafe key" aria-describedby="jevHelp"><button id="toggleJevKeyButton" class="secondary-button compact" type="button" aria-label="Show TypeSafe API key" aria-pressed="false">Show</button></div><p id="jevHelp" class="settings-help">Caption excerpts and video metadata also go to TypeSafe. OpenAI still writes the summary.</p></div></div></div></details>
-          <details class="settings-disclosure"><summary><span><strong>Privacy &amp; API costs</strong><span class="settings-summary-help">What stays here, and what goes to AI.</span></span></summary><div class="settings-disclosure-body settings-privacy"><p>Clipse is free, with no Clipse subscription. You pay your AI provider directly for what you use.</p><p>Your keys and history stay in this Chrome profile. Keys are excluded from history backups.</p><p>Captions and video metadata go directly to OpenAI for processing. With Jev selected, excerpts and metadata also go to TypeSafe. AI processing happens at these providers.</p><p>Summary requests use your API credit. Longer videos may need several paid requests. A connection check verifies key and model access, but cannot check your available credit.</p></div></details>
+          <details id="obsidianSettings" class="settings-disclosure"><summary><span><strong>Obsidian</strong><span class="settings-summary-help">Where “Save to Obsidian” puts your notes.</span></span></summary><div class="settings-disclosure-body"><div class="settings-field"><label for="obsidianVault">Vault name</label><input id="obsidianVault" type="text" maxlength="200" spellcheck="false" placeholder="Last opened vault" aria-describedby="obsidianVaultHelp"><p id="obsidianVaultHelp" class="settings-help">Exactly as it appears in Obsidian. Leave empty to use the vault you last opened.</p></div><div class="settings-field"><label for="obsidianFolder">Folder</label><input id="obsidianFolder" type="text" maxlength="200" spellcheck="false" placeholder="Vault root" aria-describedby="obsidianFolderHelp"><p id="obsidianFolderHelp" class="settings-help">A folder inside the vault, such as Clipse or Sources/YouTube. Obsidian creates it if needed.</p></div><p class="settings-help">Clipse copies the note to your clipboard, then asks Obsidian to create it. Chrome may ask to open Obsidian the first time.</p></div></details>
+          <details id="notionSettings" class="settings-disclosure"><summary><span><strong>Notion</strong><span class="settings-summary-help">Connect the page where “Save to Notion” adds summaries.</span></span></summary><div class="settings-disclosure-body">
+            <ol class="settings-steps">
+              <li><a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer">Create a Notion integration ↗</a>. Choose <strong>Internal</strong>, pick your workspace, and keep <strong>Read content</strong> and <strong>Insert content</strong> on.</li>
+              <li>Copy its <strong>Internal Integration Secret</strong> and paste it below.</li>
+              <li>In Notion, open the page summaries should go under, choose <strong>••• → Connections</strong>, and add your integration. <a href="https://www.notion.com/help/add-and-manage-connections-with-the-api" target="_blank" rel="noreferrer">How connections work ↗</a></li>
+              <li>Copy that page’s link (<strong>Share → Copy link</strong>) and paste it below.</li>
+            </ol>
+            <div class="settings-field"><label for="notionToken">Integration secret</label><div class="secret-row"><input id="notionToken" type="password" autocomplete="off" spellcheck="false" placeholder="ntn_…" aria-describedby="notionTokenHelp"><button id="toggleNotionKeyButton" class="secondary-button compact" type="button" aria-label="Show Notion integration secret" aria-pressed="false">Show</button></div><p id="notionTokenHelp" class="settings-help">Stored in this Chrome profile and sent only to Notion. The Notion API is free.</p></div>
+            <div class="settings-field"><label for="notionParent">Page for summaries</label><input id="notionParent" type="url" spellcheck="false" placeholder="https://www.notion.so/…" aria-describedby="notionParentHelp"><p id="notionParentHelp" class="settings-help">Each summary becomes a new page inside this one.</p></div>
+            <div class="connection-tools"><button id="testNotionButton" class="secondary-button compact" type="button">Test Notion</button><span id="notionStatus" class="settings-help" role="status" aria-live="polite">Chrome will ask to let Clipse reach api.notion.com.</span></div>
+          </div></details>
+          <details class="settings-disclosure"><summary><span><strong>Privacy &amp; API costs</strong><span class="settings-summary-help">What stays here, and what goes to AI.</span></span></summary><div class="settings-disclosure-body settings-privacy"><p>Clipse is free, with no Clipse subscription. You pay your AI provider directly for what you use.</p><p>Your keys and history stay in this Chrome profile. Keys are excluded from history backups. Saving to Notion sends that summary to Notion.</p><p>Captions and video metadata go directly to OpenAI for processing. With Jev selected, excerpts and metadata also go to TypeSafe. AI processing happens at these providers.</p><p>Summary requests use your API credit. Longer videos may need several paid requests. A connection check verifies key and model access, but cannot check your available credit.</p></div></details>
         </div>
       </div>
 
@@ -139,10 +178,19 @@
         <div class="settings-danger-row"><span class="settings-help">Start fresh with an empty history.</span><button id="clearHistoryButton" class="text-button danger-text" type="button">Clear all history…</button></div>
         <div id="clearConfirmation" class="confirmation hidden" role="group" aria-label="Confirm clearing history"><p id="clearHistoryMessage"></p><div class="button-row"><button id="confirmClearButton" class="secondary-button danger-text" type="button">Delete all summaries</button><button id="cancelClearButton" class="secondary-button" type="button">Keep history</button></div></div>
       </section>
-      <div class="settings-guide"><span class="settings-help">Need a hand getting started?</span><button id="onboardingHelpButton" class="text-button" type="button">Welcome guide &amp; FAQ <span aria-hidden="true">↗</span></button></div>
+      <section class="settings-card settings-about" aria-labelledby="aboutHeading">
+        <div class="settings-card-heading"><h3 id="aboutHeading">About Clipse</h3></div>
+        <ul class="settings-links">
+          <li><button id="onboardingHelpButton" class="settings-link-row" type="button"><span>Welcome guide &amp; FAQ</span><span aria-hidden="true">→</span></button></li>
+          <li><a id="guideLink" class="settings-link-row" href="welcome.html" target="_blank" rel="noreferrer"><span>Get started: feature tour</span><span aria-hidden="true">↗</span></a></li>
+          <li><a id="githubLink" class="settings-link-row" href="https://github.com/ndelah/clipse" target="_blank" rel="noreferrer"><span>Source code on GitHub</span><span aria-hidden="true">↗</span></a></li>
+          <li><a id="rateLink" class="settings-link-row" href="https://chromewebstore.google.com/" target="_blank" rel="noreferrer"><span>Rate Clipse on the Chrome Web Store</span><span aria-hidden="true">↗</span></a></li>
+        </ul>
+      </section>
 
       <div class="settings-save-bar"><div class="settings-save-content"><p id="settingsStatus" class="status-message muted" role="status" aria-live="polite" aria-atomic="true">Your preferences, saved in this browser.</p><button id="saveSettingsButton" class="primary-button" type="button">Save settings</button></div></div>
 
     </section>
-  </main><script type="module" src="sidepanel.js"></script>
+  </main>
+  <script type="module" src="sidepanel.js"></script>
 </body></html>

@@ -1,4 +1,5 @@
 import {MAX_CATEGORIES, normalizeCategories, validateCategories} from "./categories.js";
+import {FORMAT_IDS, SUMMARY_FORMATS} from "./formats.js";
 
 const editors = new WeakMap();
 
@@ -25,6 +26,17 @@ export function loadCategoryEditor(elements, categories) {
         });
         label.appendChild(input); details.appendChild(label);
       }
+      const formatLabel = document.createElement("label");
+      formatLabel.textContent = "Summary format";
+      const select = document.createElement("select");
+      for (const id of FORMAT_IDS) {
+        const option = document.createElement("option");
+        option.value = id; option.textContent = `${SUMMARY_FORMATS[id].name} · ${SUMMARY_FORMATS[id].goal}`;
+        select.appendChild(option);
+      }
+      select.value = category.format;
+      select.addEventListener("change", () => { category.format = select.value; });
+      formatLabel.appendChild(select); details.appendChild(formatLabel);
       if (category.id !== "other") {
         const remove = document.createElement("button");
         remove.type = "button"; remove.className = "text-button danger-text"; remove.textContent = "Remove category";
@@ -42,7 +54,7 @@ export function loadCategoryEditor(elements, categories) {
   };
   const editor = {read: () => validateCategories(draft), add() {
     if (draft.length >= MAX_CATEGORIES) return;
-    const category = {id: `custom_${crypto.randomUUID().replaceAll("-", "")}`, name: "New category", description: "", instructions: ""};
+    const category = {id: `custom_${crypto.randomUUID().replaceAll("-", "")}`, name: "New category", description: "", instructions: "", format: "general"};
     draft.splice(draft.length - 1, 0, category); render(category.id);
   }};
   editors.set(elements.categoryList, editor);

@@ -1,3 +1,5 @@
+import {categoryFormat, FORMAT_IDS} from "./formats.js";
+
 export const LEGACY_CATEGORIES = Object.freeze([
   {id: "tutorial", name: "Tutorial", description: "Teaches a task through ordered actions the viewer can follow.", instructions: "Preserve prerequisites, ordered steps, configuration details, and common mistakes. Never invent missing steps or unseen demonstrations."},
   {id: "explainer", name: "Explainer", description: "Explains concepts, mechanisms, or an argument rather than teaching a sequence of actions.", instructions: "Explain the central mechanism or argument, define concepts as the speaker defines them, and retain clarifying examples and conclusions."},
@@ -31,7 +33,7 @@ export const DEFAULT_CATEGORIES = Object.freeze([
   {id: "fiction", name: "Fiction and scripted storytelling", description: "Short films, episodes, animation, narrative sketches, and audio dramas with fictional characters and a developed plot. Factual stories belong in documentaries or vlogs.", instructions: "Preserve the setting, main characters, motivations, plot sequence, conflict, turning points, and ending. Explicitly label the spoiler level before revealing twists or the ending. Do not infer unseen scenes or force an educational purpose; learning_outcomes may be empty."},
   {id: "performances", name: "Live performances", description: "Concerts, stand-up comedy, theatre, dance, and spoken-word performances where the live act is the main purpose. A scripted screen narrative belongs in fiction.", instructions: "Preserve the performer, performance type, set or segment order, themes, standout moments, audience interaction, and meaningful visual or musical elements only when supported by captions. Do not invent stage action, musical qualities, or an educational purpose; learning_outcomes may be empty."},
   {...LEGACY_CATEGORIES.find(category => category.id === "other")}
-].map(category => Object.freeze(category)));
+].map(category => Object.freeze({...category, format: categoryFormat(category)})));
 
 // Upgrade only the untouched starter set. Customizations and saved job/history snapshots remain intact.
 export function upgradeStarterCategories(value) {
@@ -54,6 +56,7 @@ export function normalizeCategories(value) {
       category[key] = typeof item[key] === "string" ? item[key].trim().slice(0, limit) : "";
     }
     if (!category.name || !category.description || !category.instructions) continue;
+    category.format = categoryFormat(item);
     seen.add(category.id);
     categories.push(category);
   }
@@ -70,7 +73,8 @@ export function validateCategories(value) {
   }
   const clean = normalizeCategories(value);
   if (JSON.stringify(clean) !== JSON.stringify(value.map(category => ({
-    id: category.id, name: category.name.trim(), description: category.description.trim(), instructions: category.instructions.trim()
+    id: category.id, name: category.name.trim(), description: category.description.trim(), instructions: category.instructions.trim(),
+    format: FORMAT_IDS.includes(category.format) ? category.format : categoryFormat(category)
   })))) throw new Error("Every category needs a name, a definition, and summary instructions within the field limits.");
   if (new Set(clean.map(category => category.name.toLowerCase())).size !== clean.length) throw new Error("Give each category a different name.");
   return clean;

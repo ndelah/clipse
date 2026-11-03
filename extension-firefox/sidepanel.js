@@ -1,7 +1,9 @@
-import {loadSettings, HISTORY_FORMAT, HISTORY_VERSION, videoIdFromUrl, videoUrl, timestamp, summaryMarkdown, summaryParagraphs, normalizeSummary} from "./shared.js";
+import {loadSettings, DEFAULT_SETTINGS, exportTargets, HISTORY_FORMAT, HISTORY_VERSION, videoIdFromUrl, videoUrl, timestamp, summaryMarkdown, summaryParagraphs, normalizeSummary} from "./shared.js";
 import {loadSettingsForm, wireSettingsForm} from "./settings-form.js";
-import {SCORE_RUBRICS, ROUTING_CONFIDENCE} from "./routing.js";
 import {recoveryFor} from "./recovery.js";
+import {renderMarkdown} from "./markdown.js";
+import {renderObsidianNote, obsidianNewNoteUri} from "./obsidian.js";
+import {createNotionPage, requestNotionAccess} from "./notion.js";
 
 const elements = Object.fromEntries([...document.querySelectorAll("[id]")].map(element => [element.id, element]));
 let view = "history";
@@ -20,6 +22,8 @@ let starting = false;
 let pendingFocus = false;
 let lastStage = "";
 const disclosureState = new Map();
+let destinations = [...DEFAULT_SETTINGS.exportTargets];
+const ONBOARDING_TARGETS = {copy: "onboardCopy", download: "onboardDownload", obsidian: "onboardObsidian", notion: "onboardNotion"};
 
 async function send(message) {
   const response = await chrome.runtime.sendMessage(message);
@@ -60,7 +64,7 @@ function showView(name, focus = false) {
     if (selectedSummary) { renderSummary(selectedSummary); showCurrentState("resultState"); }
     if (activeJobId) watchJob();
   } else if (name === "history") renderHistory().catch(error => setStatus(elements.historyStatus, error.message, true));
-  else if (name === "onboarding") { setOnboardingPage(onboardingPage); focusContent(); }
+  else if (name === "onboarding") { setOnboardingPage(onboardingPage); loadOnboardingTargets().catch(error => setStatus(elements.onboardingStatus, error.message, true)); focusContent(); }
   else Promise.all([loadSettingsForm(elements), renderHistory()]).then(focusContent).catch(error => setStatus(elements.settingsStatus, error.message, true));
 }
 function showCurrentState(id) {
@@ -177,28 +181,7 @@ async function seek(summary, seconds) {
   try { await send({type: "SEEK_SUMMARY", videoId: summary.videoId, seconds}); }
   catch (error) { setStatus(elements.resultStatus, error.message, true); }
 }
-function renderClassification(preview) {
-  elements.contentType.textContent = preview.content_type || "Video";
-  elements.level.textContent = `${preview.level || "Mixed"} level`;
-  elements.density.textContent = preview.useful_content_density ? `${preview.useful_content_density} information density` : "";
-  const classification = preview.classification;
-  const knowledge = classification?.scores?.prior_knowledge;
-  const density = classification?.scores?.content_density;
-  const specificity = classification?.scores?.instruction_specificity;
-  if (classification) {
-    elements.contentType.textContent = classification.categoryName || preview.content_type || "Other";
-    elements.level.textContent = knowledge?.confidence >= ROUTING_CONFIDENCE
-      ? `Assumes ${["no prior knowledge", "working familiarity", "specialist knowledge"][Math.round(knowledge.score)]}` : "Prior knowledge unclear";
-    elements.density.textContent = density?.confidence >= ROUTING_CONFIDENCE
-      ? `${SCORE_RUBRICS.content_density.labels[Math.round(density.score)]} information density` : "Density unclear";
-  }
-  elements.specificity.classList.toggle("hidden", !(specificity?.confidence >= ROUTING_CONFIDENCE));
-  elements.specificity.textContent = specificity ? SCORE_RUBRICS.instruction_specificity.labels[Math.round(specificity.score)] : "";
-  elements.classificationNote.textContent = classification?.reason === "request_failed" || classification?.reason === "invalid_response"
-    ? "Classification was unavailable; the fallback summary approach was used."
-    : classification?.reason === "uncertain" ? "Category was uncertain; the fallback summary approach was used."
-    : `Classification and recommendations are AI estimates.${classification?.sampled ? " Classification uses excerpts from across the video." : ""}`;
-}
+// One quiet line replaces the old "About this video" panel: where the summary came from and its limits.
 function renderSummary(summary) {
   const previousId = displayedSummary?.videoId;
   displayedSummary = summary; retryVideoId = summary.videoId;
@@ -210,14 +193,9 @@ function renderSummary(summary) {
   elements.videoLink.href = videoUrl(summary.videoId);
   elements.videoLink.classList.toggle("hidden", Boolean(summary.sample));
   elements.sampleNotice.classList.toggle("hidden", !summary.sample);
-  elements.resultFooter.classList.toggle("hidden", Boolean(summary.sample));
-  elements.resultChannel.textContent = summary.channel || "YouTube";
+  elements.resultChannel.textContent = summary.channel || "";
   elements.resultDuration.textContent = summary.durationSeconds ? timestamp(summary.durationSeconds) : "";
-  const captionType = summary.transcriptIsGenerated === true ? "automatic captions" : summary.transcriptIsGenerated === false ? "manual captions" : "caption type unknown";
-  elements.transcriptInfo.textContent = `Based on captions · ${summary.transcriptLanguage || "language unavailable"} · ${captionType}`;
-  renderClassification(preview);
   elements.oneSentenceSummary.textContent = preview.one_sentence_summary || "";
-  elements.worthWatching.textContent = preview.worth_watching || "";
   elements.keyTakeaways.replaceChildren();
   for (const takeaway of preview.key_takeaways || []) {
     const row = document.createElement("div"); row.className = "takeaway";
@@ -235,7 +213,10 @@ function renderSummary(summary) {
   }
   elements.takeawaysSection.classList.toggle("hidden", !preview.key_takeaways?.length);
   elements.fullSummary.replaceChildren();
-  for (const text of summaryParagraphs(preview.full_summary)) {
+  elements.fullSummary.classList.toggle("markdown-summary", Boolean(preview.format));
+  if (preview.format) {
+    elements.fullSummary.append(...renderMarkdown(preview.full_summary, document));
+  } else for (const text of summaryParagraphs(preview.full_summary)) {
     const paragraph = document.createElement("p"); paragraph.textContent = text; elements.fullSummary.appendChild(paragraph);
   }
   elements.fullSummarySection.classList.toggle("hidden", !preview.full_summary);
@@ -243,52 +224,147 @@ function renderSummary(summary) {
   if (previousId !== summary.videoId) {
     const stored = disclosureState.get(summary.videoId) || {};
     elements.takeawaysSection.open = stored.takeaways === true;
-    elements.fullSummarySection.open = stored.full === true; elements.aboutVideo.open = stored.about === true;
+    elements.fullSummarySection.open = stored.full !== false;
   }
   setStatus(elements.resultStatus, "");
-  for (const id of ["copySummaryButton", "exportMarkdownButton", "refreshButton"]) elements[id].disabled = Boolean(summary.sample) || (id === "refreshButton" && Boolean(activeJobId));
+  showDestinationButtons();
+  for (const id of ["copySummaryButton", "saveObsidianButton", "saveNotionButton", "exportMarkdownButton", "refreshButton"]) elements[id].disabled = Boolean(summary.sample) || (id === "refreshButton" && Boolean(activeJobId));
+}
+// Only the destinations someone chose get a button; YouTube and Delete are always there.
+function showDestinationButtons() {
+  for (const [target, id] of [["copy", "copySummaryButton"], ["download", "exportMarkdownButton"], ["obsidian", "saveObsidianButton"], ["notion", "saveNotionButton"]]) {
+    elements[id].classList.toggle("hidden", !destinations.includes(target));
+  }
 }
 function formatDate(value) {
-  const date = new Date(value); return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(undefined, {dateStyle: "medium"}).format(date) : "";
+  const date = new Date(value); if (!Number.isFinite(date.getTime())) return "";
+  // The date group already gives the period; the current year is implied.
+  const options = date.getFullYear() === new Date().getFullYear() ? {month: "short", day: "numeric"} : {dateStyle: "medium"};
+  return new Intl.DateTimeFormat(undefined, options).format(date);
 }
 function openSaved(summary) {
   selectedSummary = summary; activeJobId = null; failedJobId = null; showView("history", true);
 }
-function createHistoryCard(summary) {
-  const card = document.createElement("article"); card.className = "history-card";
-  const content = document.createElement("div");
-  const title = document.createElement("button"); title.className = "history-title"; if (!title.dataset) title.dataset = {};
-  title.dataset.videoId = summary.videoId; title.dataset.action = "read";
-  title.textContent = summary.title || "YouTube video"; title.addEventListener("click", () => openSaved(summary));
-  const overview = document.createElement("p"); overview.className = "history-summary"; overview.textContent = summary.preview?.one_sentence_summary || "Saved summary";
-  const meta = document.createElement("p"); meta.className = "history-meta";
-  const metadata = document.createElement("span"); metadata.className = "history-context";
-  if (summary.channel) {
-    const channel = document.createElement("span"); channel.textContent = summary.channel; metadata.appendChild(channel);
-  }
-  const date = document.createElement("span"); date.textContent = [summary.durationSeconds ? timestamp(summary.durationSeconds) : "", formatDate(summary.updatedAt || summary.createdAt)].filter(Boolean).join(" · ");
-  metadata.appendChild(date);
-  const original = document.createElement("a"); original.className = "youtube-link"; original.href = videoUrl(summary.videoId); original.target = "_blank"; original.rel = "noreferrer";
-  original.setAttribute("aria-label", `Open video on YouTube: ${summary.title || "YouTube video"}`); original.title = "Open video on YouTube";
-  const logo = document.createElement("img"); logo.src = "icons/youtube.svg"; logo.width = 28; logo.height = 20; logo.alt = "";
-  const watchLabel = document.createElement("span"); watchLabel.textContent = "Watch";
-  original.append(logo, watchLabel); meta.append(metadata, original);
-  const footer = document.createElement("div"); footer.className = "history-footer";
-  const remove = document.createElement("button"); remove.className = "text-button danger-text history-delete"; remove.textContent = "Delete";
-  if (!remove.dataset) remove.dataset = {};
-  remove.dataset.videoId = summary.videoId; remove.dataset.action = "delete";
-  remove.setAttribute("aria-label", `Delete summary: ${summary.title || "YouTube video"}`);
-  remove.addEventListener("click", () => deleteHistory(summary.videoId));
-  footer.append(meta, remove); content.append(title, overview, footer); card.appendChild(content); return card;
+const CLIPBOARD_FAILED = "Clipboard access failed. Try again, or download Markdown from the summary view.";
+// Export actions shared by the reading view and each history card; `status` is wherever the outcome should be reported.
+async function copySummary(summary, status) {
+  try { await navigator.clipboard.writeText(summaryMarkdown(summary)); setStatus(status, "Summary copied with source and timestamp links."); }
+  catch { setStatus(status, CLIPBOARD_FAILED, true); }
 }
+function openExternal(href) {
+  const anchor = document.createElement("a"); anchor.href = href; anchor.target = "_blank"; anchor.rel = "noreferrer";
+  document.body.appendChild(anchor); anchor.click(); anchor.remove();
+}
+async function saveToObsidian(summary, status) {
+  try {
+    const [settings, note] = await Promise.all([loadSettings(chrome.storage.local), renderObsidianNote(summary)]);
+    try { await navigator.clipboard.writeText(note.content); }
+    catch { throw new Error(CLIPBOARD_FAILED); }
+    const anchor = document.createElement("a"); anchor.href = obsidianNewNoteUri({vault: settings.obsidianVault, folder: settings.obsidianFolder, name: note.name});
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    setStatus(status, "Sent to Obsidian. If it didn’t open, check Obsidian is installed and the vault name in Settings.");
+  } catch (error) { setStatus(status, error.message, true); }
+}
+async function saveToNotion(summary, status) {
+  const access = requestNotionAccess();
+  setStatus(status, "Saving to Notion…");
+  try {
+    if (!await access) throw new Error("Clipse needs permission to reach api.notion.com to save pages. Try again and choose Allow.");
+    const settings = await loadSettings(chrome.storage.local);
+    await createNotionPage({token: settings.notionToken, parent: settings.notionParent}, summary);
+    setStatus(status, `Saved to Notion: ${summary.title || "YouTube video"}.`);
+  } catch (error) { setStatus(status, error.message, true); }
+}
+const MENU_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>';
+// Everything a card can do sits behind one button; the title itself opens the summary.
+function cardActions(summary) {
+  return [
+    ["youtube", "Open on YouTube", () => openExternal(videoUrl(summary.videoId))],
+    ["copy", "Copy summary", () => copySummary(summary, elements.historyStatus)],
+    ["obsidian", "Save to Obsidian", () => saveToObsidian(summary, elements.historyStatus)],
+    ["notion", "Save to Notion", () => saveToNotion(summary, elements.historyStatus)],
+    ["delete", "Delete", () => deleteHistory(summary.videoId)]
+  ].filter(([action]) => !["copy", "obsidian", "notion"].includes(action) || destinations.includes(action));
+}
+// The menu is a native popover (light dismiss and Escape for free), placed under its button by hand.
+function placeMenu(menu, button) {
+  const anchor = button.getBoundingClientRect(), box = menu.getBoundingClientRect();
+  const below = anchor.bottom + 4 + box.height <= innerHeight;
+  menu.style.top = `${Math.max(4, below ? anchor.bottom + 4 : anchor.top - 4 - box.height)}px`;
+  menu.style.left = `${Math.max(4, anchor.right - box.width)}px`;
+}
+function summaryCategory(summary) { return summary.preview?.classification?.categoryName || summary.preview?.content_type || ""; }
+function summaryTopics(summary) { return (Array.isArray(summary.preview?.topics) ? summary.preview.topics : []).filter(topic => typeof topic === "string" && topic.trim()).slice(0, 4); }
+// Calendar buckets, newest first. Older summaries matter less, so they sink.
+function dateBucket(value, now = new Date()) {
+  const time = dateValue(value);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const week = new Date(today); week.setDate(today.getDate() - (today.getDay() + 6) % 7);
+  const month = new Date(now.getFullYear(), now.getMonth(), 1);
+  const quarter = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const year = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  return time >= week ? "This week" : time >= month ? "This month" : time >= quarter ? "Last 3 months" : time >= year ? "Past year" : "Older";
+}
+function createHistoryCard(summary) {
+  const name = summary.title || "YouTube video";
+  const card = document.createElement("article"); card.className = "history-card";
+  const title = document.createElement("button"); title.className = "history-title";
+  title.dataset.videoId = summary.videoId; title.dataset.action = "read";
+  title.textContent = name; title.addEventListener("click", () => openSaved(summary));
+  const footer = document.createElement("div"); footer.className = "history-footer";
+  const meta = document.createElement("p"); meta.className = "history-meta";
+  meta.textContent = [summary.channel, formatDate(summary.updatedAt || summary.createdAt)].filter(Boolean).join(" · ");
+  const more = document.createElement("button"); more.type = "button"; more.className = "icon-button history-more";
+  more.dataset.videoId = summary.videoId; more.dataset.action = "actions";
+  more.setAttribute("aria-label", `Actions for ${name}`); more.setAttribute("aria-haspopup", "menu"); more.setAttribute("aria-expanded", "false"); more.title = "Actions";
+  more.innerHTML = MENU_ICON;
+  const menu = document.createElement("div"); menu.className = "history-menu"; menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", `Actions for ${name}`);
+  menu.popover = "auto";
+  for (const [action, label, run] of cardActions(summary)) {
+    const item = document.createElement("button"); item.type = "button"; item.className = `history-menu-item${action === "delete" ? " danger-text" : ""}`;
+    item.setAttribute("role", "menuitem"); item.dataset.videoId = summary.videoId; item.dataset.action = action; item.textContent = label;
+    item.addEventListener("click", () => { menu.hidePopover?.(); return run(); });
+    menu.appendChild(item);
+  }
+  more.addEventListener("click", () => menu.togglePopover?.());
+  menu.addEventListener("toggle", event => {
+    const open = event.newState === "open";
+    more.setAttribute("aria-expanded", String(open));
+    if (open) { placeMenu(menu, more); menu.querySelector?.("[role=menuitem]")?.focus(); }
+  });
+  menu.addEventListener("keydown", event => {
+    if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+    event.preventDefault();
+    const items = [...menu.children], index = items.indexOf(document.activeElement);
+    items[(index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus();
+  });
+  footer.append(meta, more, menu); card.append(title, footer); return card;
+}
+// Offers only values that still have videos under the other active filters, with how many each would show.
+function fillFilter(select, values, allLabel) {
+  const current = select.value;
+  const counts = new Map();
+  for (const value of values.filter(Boolean)) counts.set(value, (counts.get(value) || 0) + 1);
+  // Never silently drop the active choice, even when a search leaves it empty.
+  if (current && !counts.has(current)) counts.set(current, 0);
+  const unique = [...counts.keys()].sort((a, b) => a.localeCompare(b));
+  select.replaceChildren(...[["", allLabel], ...unique.map(value => [value, `${value} (${counts.get(value)})`])].map(([value, label]) => {
+    const option = document.createElement("option"); option.value = value; option.textContent = label; return option;
+  }));
+  select.value = current;
+  // A single choice is no choice; keep a selected filter visible so it can be cleared.
+  select.classList.toggle("hidden", unique.length < 2 && !select.value);
+}
+function refreshHistory() { return renderHistory().catch(error => setStatus(elements.historyStatus, error.message, true)); }
 function focusHistory(videoId, action = "read") {
   const target = elements.historyList.querySelector(`[data-video-id="${videoId}"][data-action="${action}"]`);
   (target || elements.historySearch).focus();
 }
 async function renderHistory() {
   const revision = ++historyRevision;
-  const {summaries, jobs, historyUndo} = await chrome.storage.local.get({summaries: {}, jobs: {}, historyUndo: null});
+  const {summaries, jobs, historyUndo, exportTargets: targets} = await chrome.storage.local.get({summaries: {}, jobs: {}, historyUndo: null, exportTargets: DEFAULT_SETTINGS.exportTargets});
   if (revision !== historyRevision) return;
+  destinations = exportTargets(targets);
   const all = Object.values(summaries).filter(summary => videoIdFromUrl(summary.url) === summary.videoId);
   elements.clearHistoryButton.disabled = !all.length;
   elements.clearHistoryMessage.textContent = `Delete all ${all.length} summaries? You can undo this until your next deletion.`;
@@ -296,24 +372,40 @@ async function renderHistory() {
   if (view !== "history" || selectedSummary) return;
   const focused = document.activeElement?.dataset;
   const query = elements.historySearch.value.trim().toLocaleLowerCase();
+  const channel = elements.channelFilter.value, category = elements.categoryFilter.value;
+  const filtering = Boolean(query || channel || category);
+  const matches = ({summary, job}) => {
+    const texts = summary ? [summary.title, summary.channel, summaryCategory(summary), ...summaryTopics(summary), summary.preview?.one_sentence_summary, summary.preview?.full_summary,
+      ...(summary.preview?.key_takeaways || []).flatMap(item => [item.text, item.source?.text])]
+      : [job.title, job.status === "failed" ? "Failed" : "Processing", job.status === "failed" ? recoveryFor(job.error).message : job.stage];
+    return texts.some(text => String(text || "").toLocaleLowerCase().includes(query));
+  };
+  // Each filter lists what the search and the other filter leave, so no choice leads to an empty list.
+  const searched = all.filter(summary => matches({summary}));
+  fillFilter(elements.channelFilter, searched.filter(summary => !category || summaryCategory(summary) === category).map(summary => summary.channel), "All channels");
+  fillFilter(elements.categoryFilter, searched.filter(summary => !channel || summary.channel === channel).map(summaryCategory), "All categories");
   const pending = latestVisibleJobs(jobs);
   const records = [...all.map(summary => ({summary, date: summary.updatedAt || summary.createdAt})),
     ...pending.map(job => ({job, date: job.createdAt}))];
   const items = records.filter(({summary, job}) => {
-    const texts = summary ? [summary.title, summary.channel, summary.preview?.one_sentence_summary, summary.preview?.full_summary,
-      ...(summary.preview?.key_takeaways || []).map(item => item.text)]
-      : [job.title, job.status === "failed" ? "Failed" : "Processing", job.status === "failed" ? recoveryFor(job.error).message : job.stage];
-    return texts.some(text => String(text || "").toLocaleLowerCase().includes(query));
+    if ((channel || category) && (!summary || (channel && summary.channel !== channel) || (category && summaryCategory(summary) !== category))) return false;
+    return matches({summary, job});
   }).sort((a, b) => dateValue(b.date) - dateValue(a.date));
-  elements.historyList.replaceChildren();
-  for (const item of items) elements.historyList.appendChild(item.job ? createJobCard(item.job, summaries) : createHistoryCard(item.summary));
-  const failures = pending.filter(job => job.status === "failed").length;
-  const processing = pending.length - failures;
-  elements.historyCount.textContent = query ? `${items.length} of ${records.length}` :
-    [`${all.length} saved`, failures ? `${failures} failed` : "", processing ? `${processing} processing` : ""].filter(Boolean).join(" · ");
-  elements.historyCount.classList.toggle("has-errors", failures > 0);
+  const groups = new Map();
+  for (const item of items) {
+    const label = dateBucket(item.date);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(item.job ? createJobCard(item.job, summaries) : createHistoryCard(item.summary));
+  }
+  elements.historyList.replaceChildren(...[...groups].map(([label, cards]) => {
+    const group = document.createElement("section"); group.className = "history-group"; group.setAttribute("aria-label", label);
+    const heading = document.createElement("h2"); heading.className = "history-group-label"; heading.textContent = label;
+    const list = document.createElement("div"); list.className = "history-group-items"; list.append(...cards);
+    group.append(heading, list); return group;
+  }));
+  elements.historyCount.textContent = filtering ? `${items.length} of ${records.length}` : "";
   elements.emptyHistory.classList.toggle("hidden", items.length > 0);
-  elements.emptyHistory.textContent = query && records.length ? "No videos match your search." : "Your summarized videos will appear here.";
+  elements.emptyHistory.textContent = filtering && records.length ? "No videos match your search." : "Your summarized videos will appear here.";
   if (focused?.videoId) focusHistory(focused.videoId, focused.action);
   focusContent();
 }
@@ -415,6 +507,19 @@ function setOnboardingPage(page, focus = false) {
     elements.onboardingView.scrollIntoView?.({block: "start"});
   }
 }
+function chosenOnboardingTargets() { return exportTargets(Object.entries(ONBOARDING_TARGETS).filter(([, id]) => elements[id].checked).map(([target]) => target)); }
+async function loadOnboardingTargets() {
+  const {exportTargets: targets} = await chrome.storage.local.get({exportTargets: DEFAULT_SETTINGS.exportTargets});
+  destinations = exportTargets(targets);
+  for (const [target, id] of Object.entries(ONBOARDING_TARGETS)) elements[id].checked = destinations.includes(target);
+  elements.onboardingNotionNote.classList.toggle("hidden", !destinations.includes("notion"));
+}
+async function saveOnboardingTargets() {
+  destinations = chosenOnboardingTargets();
+  elements.onboardingNotionNote.classList.toggle("hidden", !destinations.includes("notion"));
+  try { await chrome.storage.local.set({exportTargets: destinations}); }
+  catch (error) { setStatus(elements.onboardingStatus, error.message, true); }
+}
 async function dismissOnboarding() {
   try {
     await chrome.storage.local.set({onboardingDismissed: true});
@@ -439,6 +544,7 @@ elements.settingsDoneButton.addEventListener("click", () => showView(returnView,
 for (const button of [elements.setupButton, elements.errorSettingsButton]) button.addEventListener("click", () => showView("settings", true));
 for (const button of [elements.dismissOnboardingButton, elements.skipIntroButton]) button.addEventListener("click", dismissOnboarding);
 elements.onboardingNextButton.addEventListener("click", () => setOnboardingPage(1, true));
+for (const id of Object.values(ONBOARDING_TARGETS)) elements[id].addEventListener("change", saveOnboardingTargets);
 elements.onboardingIntroButton.addEventListener("click", () => setOnboardingPage(0, true));
 elements.onboardingSetupButton.addEventListener("click", () => setOnboardingPage(1, true));
 elements.onboardingHelpButton.addEventListener("click", () => { setOnboardingPage(0); showView("onboarding", true); });
@@ -450,7 +556,9 @@ elements.reloadVideoButton.addEventListener("click", async () => {
   catch (error) { showError(error); }
 });
 elements.discardErrorButton.addEventListener("click", () => { if (failedJobId) return discardError(failedJobId); });
-elements.historySearch.addEventListener("input", () => renderHistory().catch(error => setStatus(elements.historyStatus, error.message, true)));
+elements.historySearch.addEventListener("input", refreshHistory);
+for (const filter of [elements.channelFilter, elements.categoryFilter]) filter.addEventListener("change", refreshHistory);
+if (chrome.runtime.id) elements.rateLink.href = `https://chromewebstore.google.com/detail/${chrome.runtime.id}/reviews`;
 elements.clearHistoryButton.addEventListener("click", () => { elements.clearConfirmation.classList.toggle("hidden", false); elements.cancelClearButton.focus(); });
 elements.cancelClearButton.addEventListener("click", () => { elements.clearConfirmation.classList.toggle("hidden", true); elements.clearHistoryButton.focus(); });
 elements.confirmClearButton.addEventListener("click", () => deleteHistory());
@@ -462,16 +570,14 @@ for (const button of [elements.undoHistoryButton, elements.undoManagedHistoryBut
 elements.exportHistoryButton.addEventListener("click", exportHistory);
 elements.importHistoryButton.addEventListener("click", () => elements.importHistoryInput.click());
 elements.importHistoryInput.addEventListener("change", () => importHistoryFile(elements.importHistoryInput.files?.[0]));
-elements.copySummaryButton.addEventListener("click", async () => {
-  if (!displayedSummary || displayedSummary.sample) return;
-  try { await navigator.clipboard.writeText(summaryMarkdown(displayedSummary)); setStatus(elements.resultStatus, "Summary copied with source and timestamp links."); }
-  catch { setStatus(elements.resultStatus, "Clipboard access failed. Download Markdown to save the summary.", true); }
+for (const [id, handler] of [["copySummaryButton", copySummary], ["saveObsidianButton", saveToObsidian], ["saveNotionButton", saveToNotion]]) elements[id].addEventListener("click", () => {
+  if (displayedSummary && !displayedSummary.sample) return handler(displayedSummary, elements.resultStatus);
 });
 elements.exportMarkdownButton.addEventListener("click", () => {
   if (!displayedSummary || displayedSummary.sample) return;
   download(summaryMarkdown(displayedSummary), "text/markdown;charset=utf-8", `clipse-${displayedSummary.videoId}.md`); setStatus(elements.resultStatus, "Markdown downloaded.");
 });
-for (const [id, key] of [["takeawaysSection", "takeaways"], ["fullSummarySection", "full"], ["aboutVideo", "about"]]) elements[id].addEventListener("toggle", () => {
+for (const [id, key] of [["takeawaysSection", "takeaways"], ["fullSummarySection", "full"]]) elements[id].addEventListener("toggle", () => {
   if (displayedSummary) disclosureState.set(displayedSummary.videoId, {...disclosureState.get(displayedSummary.videoId), [key]: elements[id].open});
 });
 wireSettingsForm(elements, {onSaved(settings) {
@@ -491,5 +597,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (completed) announce(`Summary ready: ${completed.title || "YouTube video"}. Open it from history.`);
   if ((view === "settings" || (view === "history" && !selectedSummary)) && (changes.jobs || changes.summaries || changes.historyUndo || changes.apiKey)) renderHistory().catch(error => setStatus(view === "settings" ? elements.historyManagementStatus : elements.historyStatus, error.message, true));
   if (activeJobId && (changes.jobs || changes.summaries)) pollJob().catch(showError);
+  if (changes.exportTargets) { destinations = exportTargets(changes.exportTargets.newValue); showDestinationButtons(); if (view === "history" && !selectedSummary) refreshHistory(); }
 });
 initializeView();

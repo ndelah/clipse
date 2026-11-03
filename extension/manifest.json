@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Clipse",
-  "version": "0.8.3",
+  "version": "0.9.0",
   "description": "Summarize YouTube videos with key takeaways, timestamps, and searchable local history. Bring your own OpenAI API key.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -18,6 +18,9 @@
     "https://m.youtube.com/*",
     "https://api.openai.com/*",
     "https://api.typesafe.ai/*"
+  ],
+  "optional_host_permissions": [
+    "https://api.notion.com/*"
   ],
   "background": {
     "service_worker": "service-worker.js",

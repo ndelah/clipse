@@ -88,7 +88,7 @@ export function normalizeClassification(answers, categories, {provider = "fallba
 export function routingInstructions(classification, categories) {
   const category = categories.find(item => item.id === classification.categoryId) || categories.find(item => item.id === "other");
   const lines = [`Summary category: ${category.name}.`, category.instructions,
-    "Preserve useful timestamps, consequential numbers, units, attribution, and uncertainty. Missing details must stay missing. Distinguish what the transcript supports from what a speaker merely claims. Never infer visual or musical details absent from captions.",
+    "Preserve consequential numbers, units, attribution, and uncertainty. Missing details must stay missing. Distinguish what the transcript supports from what a speaker merely claims. Never infer visual or musical details absent from captions.",
     "Category guidance is a lens, not permission to discard important material from other formats. Preserve the source's actual structure where needed.",
     "Assess prerequisites independently of the viewer. Never infer a personal viewer level or invent explanations absent from the source."];
   const scores = classification.scores;

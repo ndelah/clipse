@@ -79,9 +79,12 @@
 .settings-danger-row .settings-help { margin: 0; }
 .settings-shell #clearHistoryButton { margin: 0; font-size: .75rem; }
 .settings-history .confirmation { margin-top: 12px; font-size: .8rem; }
-.settings-guide { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 8px; padding: 18px 0 8px; }
-.settings-guide .settings-help { margin: 0; }
-.settings-shell #onboardingHelpButton { margin: 0; font-size: .75rem; color: var(--settings-accent); }
+.settings-about { margin-top: 16px; }
+.settings-links { margin: 12px 0 0; padding: 0; list-style: none; }
+.settings-links li + li { border-top: 1px solid var(--border); }
+.settings-link-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 11px 0; border: 0; background: transparent; color: var(--text); font-size: .82rem; text-align: left; text-decoration: none; }
+.settings-link-row span:last-child { color: var(--muted); }
+.settings-link-row:hover span:first-child { text-decoration: underline; text-underline-offset: 3px; }
 .settings-save-bar { position: sticky; z-index: 2; bottom: 0; margin: 20px -2px -18px; padding: 12px 2px 14px; border-top: 1px solid var(--border); background: var(--bg); box-shadow: 0 -8px 16px var(--bg); }
 .settings-save-content { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .settings-save-content .status-message { flex: 1 1 135px; min-width: 0; margin: 0; font-size: .75rem; line-height: 1.5; }
@@ -110,3 +113,12 @@
   .settings-symbol, .connection-state { border: 1px solid CanvasText; }
   .settings-save-content .primary-button { border-color: ButtonText; }
 }
+.settings-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 0; padding: 0; border: 0; }
+.settings-choice { display: flex; align-items: center; gap: 9px; min-height: 42px; margin: 0; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: .82rem; cursor: pointer; }
+.settings-choice:has(input:checked) { border-color: var(--settings-accent); background: var(--settings-tint); }
+.settings-choice input { flex: none; width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; accent-color: var(--settings-accent); }
+.settings-steps { margin: 0 0 4px; padding-left: 20px; color: var(--muted); font-size: .8rem; line-height: 1.6; }
+.settings-steps li + li { margin-top: 6px; }
+.settings-steps strong { color: var(--text); font-weight: 600; }
+.settings-steps a { color: var(--settings-accent); }
+#notionStatus.error { color: var(--danger); }

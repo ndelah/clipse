@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Welcome to Clipse</title><link rel="icon" href="assets/icon-32.png"><link rel="stylesheet" href="welcome.css"></head>
+<body>
+  <header class="welcome-top"><img class="brand-mark" src="assets/eclipse.svg" width="26" height="26" alt=""><strong>Clipse</strong><a class="top-link" href="https://github.com/ndelah/clipse" target="_blank" rel="noreferrer">GitHub ↗</a></header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Less watching. More knowing.</p>
+      <h1>One click.<br>The whole picture.</h1>
+      <p class="lead">Clipse turns a YouTube video’s captions into a summary, key takeaways and timestamps, then keeps them in a library you can search.</p>
+      <div class="hero-actions"><a class="button primary" href="#try">Try it below <span aria-hidden="true">↓</span></a><button id="openSettingsButton" class="button secondary" type="button">Set up Clipse</button></div>
+    </section>
+
+    <section id="try" class="demo" aria-labelledby="tryHeading">
+      <div class="section-heading"><p class="step-tag">Hover to start</p><h2 id="tryHeading">Hover a thumbnail, then click Summarize</h2><p>This is a practice YouTube page. On the real site, the same button appears on every thumbnail and in the video player.</p></div>
+      <div class="demo-stage">
+        <div class="demo-grid" role="list" aria-label="Practice videos">
+          <!-- Each card is a fake video. data-* holds what the practice panel will show. -->
+          <article class="demo-video" role="listitem" data-title="How sourdough actually rises" data-channel="Kitchen Science" data-duration="14:08" data-tags="Baking,Fermentation,Bread" data-summary="Wild yeast and bacteria produce gas and acid; time and temperature, not kneading, decide how a loaf rises." data-takeaways="01:12|Starter strength matters more than flour brand.;05:40|A warmer proof halves the rise time.;11:03|Use the poke test, not the clock.">
+            <div class="demo-thumb" style="--hue: 32"><span class="demo-duration">14:08</span><button class="demo-summarize" type="button"><img src="assets/eclipse.svg" width="14" height="14" alt="">Summarize</button></div>
+            <h3>How sourdough actually rises</h3><p>Kitchen Science</p>
+          </article>
+          <article class="demo-video" role="listitem" data-title="The 20-minute guide to index funds" data-channel="Plain Money" data-duration="21:47" data-tags="Investing,Index funds" data-summary="Low fees and broad diversification beat stock picking for most people; the hard part is staying invested." data-takeaways="02:30|Fees compound just like returns do.;09:15|Total-market funds cover thousands of companies.;17:52|Automate contributions to avoid timing the market.">
+            <div class="demo-thumb" style="--hue: 152"><span class="demo-duration">21:47</span><button class="demo-summarize" type="button"><img src="assets/eclipse.svg" width="14" height="14" alt="">Summarize</button></div>
+            <h3>The 20-minute guide to index funds</h3><p>Plain Money</p>
+          </article>
+          <article class="demo-video" role="listitem" data-title="Why your code review takes so long" data-channel="Ship It" data-duration="9:33" data-tags="Code review,Teams,Productivity" data-summary="Large pull requests and unclear ownership slow reviews; small changes and a named reviewer fix most of it." data-takeaways="00:48|Reviews slow down sharply past 400 lines.;04:20|Name one reviewer instead of the whole team.;07:55|Write the description before the code.">
+            <div class="demo-thumb" style="--hue: 222"><span class="demo-duration">9:33</span><button class="demo-summarize" type="button"><img src="assets/eclipse.svg" width="14" height="14" alt="">Summarize</button></div>
+            <h3>Why your code review takes so long</h3><p>Ship It</p>
+          </article>
+        </div>
+        <aside class="demo-panel" aria-label="Practice Clipse panel" aria-live="polite">
+          <div class="panel-bar"><img src="assets/eclipse.svg" width="16" height="16" alt=""><span>Clipse</span></div>
+          <div id="panelIdle" class="panel-idle"><span class="panel-pointer" aria-hidden="true">↖</span><p>Your summary appears here.</p></div>
+          <div id="panelLoading" class="panel-loading hidden"><div class="spinner" aria-hidden="true"></div><p>Reading captions…</p></div>
+          <div id="panelResult" class="panel-result hidden">
+            <h3 id="panelTitle"></h3><p id="panelMeta" class="panel-meta"></p>
+            <p id="panelSummary" class="panel-summary"></p>
+            <p class="panel-label">Key takeaways</p><ul id="panelTakeaways" class="panel-takeaways"></ul>
+            <p class="panel-done">Saved to your library under <b>This week</b>.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="features" aria-labelledby="featuresHeading">
+      <div class="section-heading"><p class="step-tag">What you get</p><h2 id="featuresHeading">Everything stays one click away</h2></div>
+      <div class="feature-grid">
+        <article><span class="feature-icon" aria-hidden="true">▶</span><h3>Two ways in</h3><p>Click the Clipse logo in the video player, or Summarize on any thumbnail without opening the video.</p></article>
+        <article><span class="feature-icon" aria-hidden="true">⏱</span><h3>Jump to the moment</h3><p>Every takeaway links to its timestamp, so you can watch just the part that matters.</p></article>
+        <article><span class="feature-icon" aria-hidden="true">⌕</span><h3>A library that sorts itself</h3><p>Summaries group by date. Search titles, channels, and content as you type, or filter by channel and category.</p></article>
+        <article><span class="feature-icon" aria-hidden="true">↗</span><h3>Send it anywhere</h3><p>Copy or download Markdown, or save straight into Obsidian or a Notion page, from any item in the list.</p></article>
+        <article><span class="feature-icon" aria-hidden="true">🔒</span><h3>Private by design</h3><p>Your key and history stay in this Chrome profile. No Clipse server, no analytics.</p></article>
+      </div>
+    </section>
+
+    <section class="setup" aria-labelledby="setupHeading">
+      <div class="section-heading"><p class="step-tag">Get set up</p><h2 id="setupHeading">Ready in a few minutes</h2></div>
+      <ol class="setup-steps">
+        <li><span aria-hidden="true">1</span><div><h3>Create an OpenAI API key</h3><p>Clipse is free; AI processing is billed by OpenAI to your own account. A ChatGPT subscription doesn’t include API usage. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">Get a key ↗</a></p></div></li>
+        <li><span aria-hidden="true">2</span><div><h3>Paste it into Settings</h3><p>Clipse checks the key and model access before saving.</p></div></li>
+        <li><span aria-hidden="true">3</span><div><h3>Choose where your notes go</h3><p>Clipse shows only the buttons you pick. Change it any time in Settings.</p>
+          <fieldset class="destinations"><legend class="sr-only">Where will your notes go?</legend>
+            <label><input type="checkbox" name="destination" value="copy"><span>Copy to clipboard</span></label>
+            <label><input type="checkbox" name="destination" value="download"><span>Download Markdown</span></label>
+            <label><input type="checkbox" name="destination" value="obsidian"><span>Obsidian</span></label>
+            <label><input type="checkbox" name="destination" value="notion"><span>Notion</span></label>
+          </fieldset>
+          <div id="notionSetup" class="notion-setup hidden">
+            <p><strong>Connecting Notion</strong> (free, about a minute). Open Settings, choose Notion, and follow these steps there:</p>
+            <ol>
+              <li><a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer">Create an internal integration ↗</a> and copy its secret.</li>
+              <li>Open the Notion page for your summaries, choose ••• → Connections, and add the integration. <a href="https://www.notion.com/help/add-and-manage-connections-with-the-api" target="_blank" rel="noreferrer">Help ↗</a></li>
+              <li>Paste the secret and the page link into Clipse’s Settings.</li>
+            </ol>
+          </div>
+          <p id="destinationStatus" class="destination-status" role="status" aria-live="polite"></p>
+        </div></li>
+        <li><span aria-hidden="true">4</span><div><h3>Pin Clipse and open a video</h3><p>Pin it from Chrome’s puzzle-piece menu so your library is one click away.</p></div></li>
+      </ol>
+      <button id="openSettingsButtonBottom" class="button primary" type="button">Open Settings <span aria-hidden="true">→</span></button>
+    </section>
+  </main>
+  <footer class="welcome-footer"><a href="https://github.com/ndelah/clipse" target="_blank" rel="noreferrer">Source on GitHub</a><a href="https://clipse.delahousse.xyz/privacy" target="_blank" rel="noreferrer">Privacy</a></footer>
+  <script type="module" src="welcome.js"></script>
+</body></html>

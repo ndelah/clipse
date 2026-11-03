@@ -1,9 +1,20 @@
+import {normalizeRecipe} from "./recipe.js";
+import {FORMAT_IDS} from "./formats.js";
+import {exportableMarkdown, stripCitations} from "./markdown.js";
 import {DEFAULT_CATEGORIES, normalizeCategories, upgradeStarterCategories} from "./categories.js";
 
 export const DEFAULT_SETTINGS = Object.freeze({
   apiKey: "", model: "gpt-4.1-mini", outputLanguage: "same", captionLanguage: "auto", summaryLength: "detailed",
-  classifierProvider: "openai", jevApiKey: "", categories: DEFAULT_CATEGORIES, routingVersion: 1
+  classifierProvider: "openai", jevApiKey: "", categories: DEFAULT_CATEGORIES, routingVersion: 1,
+  obsidianVault: "", obsidianFolder: "Clipse", notionToken: "", notionParent: "",
+  // Notion is opt-in: it needs an integration before its button can do anything.
+  exportTargets: ["copy", "download", "obsidian"]
 });
+// Where notes can go. The choice only decides which export buttons appear; it never deletes anything.
+export const EXPORT_TARGETS = Object.freeze([["copy", "Copy to clipboard"], ["download", "Download Markdown"], ["obsidian", "Obsidian"], ["notion", "Notion"]]);
+export function exportTargets(value) {
+  return Array.isArray(value) ? EXPORT_TARGETS.map(([id]) => id).filter(id => value.includes(id)) : [...DEFAULT_SETTINGS.exportTargets];
+}
 export const HISTORY_FORMAT = "video-preview-history";
 export const HISTORY_VERSION = 1;
 
@@ -81,6 +92,11 @@ export function normalizeSummary(value) {
     if (!Array.isArray(preview.learning_outcomes) || !preview.learning_outcomes.every(item => typeof item === "string")) return null;
     cleanPreview.learning_outcomes = preview.learning_outcomes;
   }
+  // Topic tags are optional and cosmetic: malformed ones are dropped rather than rejecting the summary.
+  if (Array.isArray(preview.topics)) {
+    const topics = [...new Set(preview.topics.filter(item => typeof item === "string").map(item => item.trim().replace(/^#+/, "").slice(0, 40)).filter(Boolean))].slice(0, 4);
+    if (topics.length) cleanPreview.topics = topics;
+  }
   if (preview.key_takeaways !== undefined) {
     if (!Array.isArray(preview.key_takeaways) || !preview.key_takeaways.every(item => item && typeof item.text === "string"
       && (item.timestamp_seconds == null || (Number.isInteger(item.timestamp_seconds) && item.timestamp_seconds >= 0)))) return null;
@@ -93,6 +109,15 @@ export function normalizeSummary(value) {
       }
       return clean;
     });
+  }
+  if (FORMAT_IDS.includes(preview.format)) {
+    cleanPreview.format = preview.format;
+    if (cleanPreview.full_summary !== undefined) cleanPreview.full_summary = stripCitations(cleanPreview.full_summary);
+  }
+  if (preview.recipe != null) {
+    const recipe = normalizeRecipe(preview.recipe);
+    if (!recipe) return null;
+    cleanPreview.recipe = recipe;
   }
   const createdAt = value.createdAt || value.updatedAt;
   const updatedAt = value.updatedAt || createdAt;
@@ -171,7 +196,7 @@ export function summaryMarkdown(summary) {
   const p = summary.preview || {};
   const lines = [`# ${escapeMarkdown(summary.title || "YouTube video")}`, "", `[Watch on YouTube](${videoUrl(summary.videoId)})`, ""];
   if (summary.channel) lines.push(escapeMarkdown(summary.channel), "");
-  lines.push(escapeMarkdown(p.one_sentence_summary), "", escapeMarkdown(p.worth_watching), "");
+  lines.push(escapeMarkdown(p.one_sentence_summary), "");
   if (p.key_takeaways?.length) {
     lines.push("## Key takeaways", "");
     for (const item of p.key_takeaways) {
@@ -180,7 +205,8 @@ export function summaryMarkdown(summary) {
     }
     lines.push("");
   }
-  if (p.full_summary) lines.push("## Summary", "", escapeMarkdown(summaryParagraphs(p.full_summary).join("\n\n")), "");
+  if (p.full_summary && p.format) lines.push(exportableMarkdown(p.full_summary).trim(), "");
+  else if (p.full_summary) lines.push("## Summary", "", escapeMarkdown(summaryParagraphs(p.full_summary).join("\n\n")), "");
   if (p.learning_outcomes?.length) lines.push("## What you'll learn", "", ...p.learning_outcomes.map(value => `- ${escapeMarkdown(value)}`), "");
   return lines.join("\n").trim() + "\n";
 }

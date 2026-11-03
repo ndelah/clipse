@@ -3,6 +3,7 @@
   let button = null;
   let videoId = null;
   let busy = false;
+  let startRequest = 0;
   let pollTimer = null;
   let mountTimer = null;
 
@@ -11,7 +12,7 @@
     button.title = text;
     button.setAttribute("aria-label", text);
     button.dataset.state = state;
-    button.disabled = state === "running";
+    // Stay clickable while running: a click restarts a job that has stalled.
     button.setAttribute("aria-busy", String(state === "running"));
   }
 
@@ -22,7 +23,7 @@
     if (expectedId !== videoId || !button || busy) return;
     if (!response?.ok) return;
     if (response.status === "running") {
-      label(`Clipse: ${response.stage || "Summarizing"}`, "running");
+      label(`Clipse: ${response.stage || "Summarizing"}. Click to restart.`, "running");
       pollTimer = setTimeout(() => updateStatus(expectedId), 2000);
     } else if (response.status === "failed") {
       label(`Clipse: ${response.error || "Summary failed"}. Click to retry.`, "failed");
@@ -34,13 +35,17 @@
   async function summarize(event) {
     event.preventDefault();
     event.stopPropagation();
-    if (!event.isTrusted || busy || !videoId || !runtimeIsAvailable()) return;
+    if (!event.isTrusted || !videoId || !runtimeIsAvailable()) return;
     const expectedId = videoId;
+    // Clicking a running job cancels it and starts over instead of doing nothing.
+    const restart = busy || button?.dataset.state === "running";
+    const request = ++startRequest;
     busy = true;
-    label("Clipse: starting summary", "running");
+    clearTimeout(pollTimer);
+    label(restart ? "Clipse: restarting summary" : "Clipse: starting summary", "running");
     // Send immediately so the worker can open history within this user gesture.
-    const response = await safelySendRuntimeMessage({type: "START_PLAYER_JOB", videoId: expectedId});
-    if (expectedId !== videoId) return;
+    const response = await safelySendRuntimeMessage({type: "START_PLAYER_JOB", videoId: expectedId, restart});
+    if (expectedId !== videoId || request !== startRequest) return;
     busy = false;
     if (!response?.ok) {
       label(response?.error || "Clipse could not start. Reload this YouTube tab and try again.", "failed");

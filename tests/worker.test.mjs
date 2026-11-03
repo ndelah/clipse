@@ -471,3 +471,83 @@ test("discard rejects active or missing jobs", async () => {
   }
   assert.equal(w.local.state.jobs.active.dismissedAt, undefined);
 });
+
+test("a player click before the video loads starts a job instead of waiting for player data", async () => {
+  const w = worker({apiKey: "test"}, [{id: 2, url: videoUrl(VIDEO_A)}]);
+  w.chrome.tabs.sendMessage = async (id, message) => {
+    w.calls.push({kind: "message", id, message});
+    return {ok: true, context: {videoId: VIDEO_A, url: videoUrl(VIDEO_A), title: "Loading", playerReady: false}};
+  };
+  const response = await w.message({type: "START_PLAYER_JOB", videoId: VIDEO_A}, playerSender());
+  assert.ok(response.ok, response.error);
+  assert.equal(w.calls.filter(call => call.message?.type === "GET_VIDEO_CONTEXT").length, 1);
+  assert.equal(w.local.state.jobs[response.jobId].status, "queued");
+});
+
+test("restarting from the player cancels the running job and starts a fresh one", async () => {
+  const running = {id: "stuck", videoId: VIDEO_A, status: "running", sourceTabId: 2, configuration: summaryConfiguration({...DEFAULT_SETTINGS, apiKey: "test"})};
+  const w = worker({apiKey: "test", jobs: {stuck: running}, summaries: {[VIDEO_A]: summary(VIDEO_A, {configuration: running.configuration})}}, [{id: 2, url: videoUrl(VIDEO_A)}]);
+  const repeated = await w.message({type: "START_PLAYER_JOB", videoId: VIDEO_A}, playerSender());
+  assert.equal(repeated.reused, true, "A plain click still reuses the saved summary");
+  const response = await w.message({type: "START_PLAYER_JOB", videoId: VIDEO_A, restart: true}, playerSender());
+  assert.ok(response.ok, response.error);
+  assert.notEqual(response.jobId, "stuck");
+  assert.equal(response.reused, false, "A restart regenerates rather than reusing the saved summary");
+  assert.equal(w.local.state.jobs.stuck.status, "cancelled");
+  assert.ok(w.calls.some(call => call.id === 2 && call.message?.type === "CANCEL_TRANSCRIPT"));
+  assert.equal(w.local.state.jobs[response.jobId].status, "queued");
+});
+
+test("transcript reading waits for a loading player, refreshes metadata, and retries", async () => {
+  const job = {id: "early", videoId: VIDEO_A, status: "running", sourceTabId: 2, title: "Loading", captionTracks: [], configuration: {}};
+  const w = worker({jobs: {early: job}}, [{id: 2, url: videoUrl(VIDEO_A)}]);
+  let extracts = 0;
+  w.chrome.tabs.sendMessage = async (id, message) => {
+    if (message.type === "GET_VIDEO_CONTEXT") return {ok: true, context: {videoId: VIDEO_A, title: "Real title", channel: "Channel", durationSeconds: 60, captionTracks: [{languageCode: "en"}]}};
+    if (message.type !== "EXTRACT_TRANSCRIPT") return {ok: true};
+    return ++extracts === 1 ? {ok: false, code: "PLAYER_LOADING", error: "Still loading"} : {ok: true, transcript: {segments: [{text: "Captions", startSeconds: 0}]}};
+  };
+  const result = await w.message({target: "service-worker", type: "GET_TRANSCRIPT", jobId: "early"});
+  assert.ok(result.ok, result.error);
+  assert.equal(extracts, 2);
+  assert.equal(w.local.state.jobs.early.title, "Real title");
+  assert.equal(w.local.state.jobs.early.captionTracks.length, 1);
+});
+
+test("captions fetched by ID backfill a missing title or channel from YouTube metadata", async () => {
+  const w = worker({apiKey: "test"}, [{id: 2, windowId: 1, url: "https://www.youtube.com/", active: true}]);
+  w.chrome.tabs.sendMessage = async () => ({ok: true, transcript: {segments: [{startSeconds: 0, text: "Hi"}]}});
+  const requested = [];
+  w.context.fetch = async url => { requested.push(url); return {ok: true, json: async () => ({title: "Real title", author_name: "Real channel"})}; };
+  const {jobId} = await w.message({type: "START_THUMBNAIL_JOB", videoId: VIDEO_A, title: "Feed title"}, thumbnailSender());
+  assert.equal(w.local.state.jobs[jobId].title, "Feed title");
+  assert.equal(w.local.state.jobs[jobId].channel, null);
+  const response = await w.message({target: "service-worker", type: "GET_TRANSCRIPT", jobId});
+  assert.ok(response.ok, response.error);
+  assert.match(requested[0], /^https:\/\/www\.youtube\.com\/oembed\?/);
+  assert.equal(w.local.state.jobs[jobId].title, "Feed title");
+  assert.equal(w.local.state.jobs[jobId].channel, "Real channel");
+});
+
+test("saved summaries missing a title or channel are repaired once metadata is available", async () => {
+  const w = worker({summaries: {
+    [VIDEO_A]: summary(VIDEO_A, {title: "Untitled YouTube video", channel: ""}),
+    [VIDEO_B]: summary(VIDEO_B, {title: "Kept", channel: ""})
+  }});
+  const requested = [];
+  w.context.fetch = async url => { requested.push(url); return {ok: true, json: async () => ({title: "Real title", author_name: "Real channel"})}; };
+  await run(w.context, "repairUntitledSummaries()");
+  assert.equal(requested.length, 2);
+  assert.equal(w.local.state.summaries[VIDEO_A].title, "Real title");
+  assert.equal(w.local.state.summaries[VIDEO_A].channel, "Real channel");
+  assert.equal(w.local.state.summaries[VIDEO_B].title, "Kept");
+  assert.equal(w.local.state.summaries[VIDEO_B].channel, "Real channel");
+});
+
+test("a first install opens the welcome tour; updates do not", async () => {
+  const w = worker();
+  await w.chrome.runtime.onInstalled.listeners[0]({reason: "update"});
+  assert.ok(!w.calls.some(call => call.kind === "create"));
+  await w.chrome.runtime.onInstalled.listeners[0]({reason: "install"});
+  assert.equal(w.calls.find(call => call.kind === "create").url, "chrome-extension://test/welcome.html");
+});

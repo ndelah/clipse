@@ -407,7 +407,14 @@ async function extractTranscriptFromPage({expectedVideoId, captionLanguage = "au
     if (currentVideoId() !== expectedVideoId) throw new Error("This tab has changed video during extraction.");
     window.postMessage({source: "video-preview-content-script", type: "REQUEST_VIDEO_CONTEXT"}, "*");
   }
-  if (latestContext?.videoId !== expectedVideoId || latestContext.playerReady === false) throw new Error("YouTube's video data is still loading. Reload the video and retry.");
+  if (latestContext?.videoId !== expectedVideoId || latestContext.playerReady === false) {
+    // Before playback starts (or during a pre-roll ad) the player has no data,
+    // but the by-ID request only needs the page's signed-in session.
+    const early = await fetchPageTranscript(expectedVideoId, signal, captionLanguage, true);
+    if (expectedVideoId && currentVideoId() !== expectedVideoId) throw new Error("This tab has changed video during extraction.");
+    if (early) return early;
+    throw Object.assign(new Error("YouTube's video data is still loading. Wait for the video to start and retry."), {code: "PLAYER_LOADING"});
+  }
 
   const tracks = latestContext?.captionTracks || [];
   const requestedTrack = captionLanguage === "auto" ? null : tracks.find(track => captionTrackKey(track) === captionLanguage);
@@ -484,6 +491,7 @@ if (runtimeIsAvailable()) {
         .then(transcript => sendResponse({ok: true, transcript}))
         .catch(error => sendResponse({
           ok: false,
+          code: error?.code || null,
           error: error?.name === "AbortError"
             ? "Transcript extraction was cancelled."
             : (error instanceof Error ? error.message : String(error))

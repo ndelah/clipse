@@ -4,7 +4,9 @@ let creatingOffscreenDocument = null;
 let firefoxWorkerWindowId = null;
 const MAX_JOB_AGE_MS = 12 * 60 * 1000;
 const STALE_JOB_MS = 75 * 1000;
+const PLAYER_READY_WAIT_MS = 90 * 1000;
 const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);
+const UNTITLED_VIDEO = "Untitled YouTube video";
 let stateMutationQueue = Promise.resolve();
 
 /**
@@ -52,7 +54,9 @@ if (typeof chrome.sidePanel?.open !== "function" && chrome.sidebarAction?.toggle
   });
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async details => {
+  // A first install opens the full-page welcome tour; updates stay quiet.
+  if (details?.reason === "install") chrome.tabs.create({url: chrome.runtime.getURL("welcome.html")}).catch(() => {});
   await configureExtensionSurface();
   const settings = await loadSettings(chrome.storage.local);
   await chrome.storage.local.set(settings);
@@ -355,7 +359,7 @@ async function startJob(tabId, context, forceRefresh = false, fromThumbnail = fa
       id: jobId,
       videoId: context.videoId,
       url: context.url,
-      title: context.title || "Untitled YouTube video",
+      title: context.title || UNTITLED_VIDEO,
       channel: context.channel || null,
       durationSeconds: context.durationSeconds || null,
       captionTracks: context.captionTracks || [],
@@ -405,6 +409,44 @@ function withTimeout(promise, timeoutMs, message) {
   ]).finally(() => clearTimeout(timer));
 }
 
+const needsTitle = title => !title || title === UNTITLED_VIDEO;
+
+// Public oEmbed metadata covers thumbnail jobs whose captions came by ID, with no watch page to read.
+async function fetchVideoMetadata(videoId) {
+  try {
+    const url = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(videoUrl(videoId))}`;
+    const response = await withTimeout(fetch(url, {credentials: "omit"}), 5000, "YouTube metadata timed out.");
+    if (!response?.ok) return null;
+    const data = await response.json();
+    const title = String(data?.title || "").trim().slice(0, 500);
+    return title ? {title, channel: String(data?.author_name || "").trim().slice(0, 120) || null} : null;
+  } catch {
+    return null;
+  }
+}
+
+async function ensureJobTitle(jobId) {
+  const job = (await getState()).jobs[jobId];
+  if (!job || (!needsTitle(job.title) && job.channel)) return;
+  const metadata = await fetchVideoMetadata(job.videoId);
+  if (metadata) await patchJob(jobId, {title: needsTitle(job.title) ? metadata.title : job.title, channel: job.channel || metadata.channel});
+}
+
+async function repairUntitledSummaries() {
+  const {summaries} = await getState();
+  for (const summary of Object.values(summaries)) {
+    if (!needsTitle(summary.title) && summary.channel) continue;
+    const metadata = await fetchVideoMetadata(summary.videoId);
+    if (!metadata) continue;
+    await mutateState(state => {
+      const saved = state.summaries[summary.videoId];
+      if (!saved) return;
+      if (needsTitle(saved.title)) saved.title = metadata.title;
+      if (!saved.channel && metadata.channel) saved.channel = metadata.channel;
+    });
+  }
+}
+
 async function candidateTabsForJob(job, state) {
   const openTabs = await chrome.tabs.query({});
   const matchingIds = new Set(openTabs.filter(tab => videoIdFromUrl(tab.pendingUrl || tab.url) === job.videoId).map(tab => tab.id));
@@ -447,7 +489,7 @@ async function requestTranscriptFromYouTubeTab(jobId) {
     try {
       const tab = await chrome.tabs.get(tabId);
       if (videoIdFromUrl(tab.pendingUrl || tab.url) !== job.videoId) continue;
-      const response = await withTimeout(
+      const extract = () => withTimeout(
         chrome.tabs.sendMessage(tabId, {
           type: "EXTRACT_TRANSCRIPT",
           expectedVideoId: job.videoId,
@@ -456,8 +498,29 @@ async function requestTranscriptFromYouTubeTab(jobId) {
         25000,
         "YouTube did not finish rendering its transcript within 25 seconds."
       );
+      let response = await extract();
+      if (response?.code === "PLAYER_LOADING") {
+        // Clicked before the video loaded: wait for the player, then read captions again.
+        const ready = await contextForVideo(job.videoId, tabId, false, {timeoutMs: PLAYER_READY_WAIT_MS});
+        const current = await patchJob(jobId, {
+          title: ready.context.title || job.title,
+          channel: ready.context.channel || job.channel,
+          durationSeconds: ready.context.durationSeconds || job.durationSeconds,
+          captionTracks: ready.context.captionTracks?.length ? ready.context.captionTracks : job.captionTracks
+        });
+        if (TERMINAL_STATUSES.has(current.status)) throw new Error("Summary cancelled.");
+        response = await extract();
+      }
       if (response?.ok && response.transcript?.segments?.length) {
-        await patchJob(jobId, {sourceTabId: tabId});
+        const latestState = await getState();
+        const latestJob = latestState.jobs[jobId] || job;
+        const latest = latestState.latestContexts[String(tabId)];
+        const context = latest?.videoId === job.videoId ? latest : null;
+        await patchJob(jobId, {
+          sourceTabId: tabId,
+          channel: latestJob.channel || context?.channel || null,
+          durationSeconds: latestJob.durationSeconds || context?.durationSeconds || null
+        });
         return response.transcript;
       }
       errors.push(response?.error || `Tab ${tabId} returned no transcript.`);
@@ -641,18 +704,25 @@ async function seekSummary(videoId, seconds) {
   return {tabId: tab.id};
 }
 
-async function contextForVideo(videoId, sourceTabId = null, pausePlayback = false) {
+async function contextForVideo(videoId, sourceTabId = null, pausePlayback = false, {allowPending = false, timeoutMs = 15000} = {}) {
   const tab = sourceTabId === null ? await findVideoTab(videoId) : await chrome.tabs.get(sourceTabId);
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + timeoutMs;
+  let pending = null;
   while (Date.now() < deadline) {
     const current = await chrome.tabs.get(tab.id);
     if (videoIdFromUrl(current.pendingUrl || current.url) !== videoId) throw new Error("The source tab changed video. Try again.");
     try {
       const response = await chrome.tabs.sendMessage(tab.id, {type: "GET_VIDEO_CONTEXT", expectedVideoId: videoId, pausePlayback});
       if (response?.context?.videoId === videoId && response.context.playerReady !== false) return {tabId: tab.id, context: response.context};
+      if (response?.context?.videoId === videoId) {
+        pending = {tabId: tab.id, context: response.context};
+        // Before playback (or during a pre-roll ad) the player has no data yet; start anyway.
+        if (allowPending) return pending;
+      }
     } catch { /* Wait for the new tab's content script. */ }
     await new Promise(resolve => setTimeout(resolve, 300));
   }
+  if (allowPending && pending) return pending;
   throw new Error("Could not read the saved video's tab. Reload it and try again.");
 }
 
@@ -716,16 +786,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "START_THUMBNAIL_JOB") {
       const result = await startJob(sender.tab.id, {
         videoId: message.videoId, url: videoUrl(message.videoId),
-        title: String(message.title || "Untitled YouTube video").slice(0, 500)
+        title: String(message.title || UNTITLED_VIDEO).slice(0, 500),
+        channel: String(message.channel || "").trim().slice(0, 120) || null
       }, false, true);
       await panelOpening;
       sendResponse({ok: true, ...result});
       return;
     }
     if (message?.type === "START_PLAYER_JOB") {
-      const target = await contextForVideo(message.videoId, sender.tab.id);
+      let restarted = false;
+      if (message.restart) {
+        const {jobs} = await getState();
+        for (const job of Object.values(jobs)) {
+          if (job.videoId !== message.videoId || !["queued", "running"].includes(job.status)) continue;
+          await cancelJob(job.id);
+          restarted = true;
+        }
+      }
+      // A click before playback starts must not fail: the transcript step waits for the player.
+      const target = await contextForVideo(message.videoId, sender.tab.id, false, {allowPending: true});
       if (videoIdFromUrl((await chrome.tabs.get(target.tabId)).url) !== message.videoId) throw new Error("This tab has changed video. Click Clipse on the new video.");
-      const result = await startJob(target.tabId, target.context);
+      const result = await startJob(target.tabId, target.context, restarted);
       await panelOpening;
       sendResponse({ok: true, ...result});
       return;
@@ -744,6 +825,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message?.target === "service-worker" && message?.type === "GET_TRANSCRIPT") {
       const transcript = await requestTranscriptFromYouTubeTab(message.jobId);
+      await ensureJobTitle(message.jobId);
       sendResponse({ok: true, transcript});
       return;
     }
@@ -867,10 +949,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.runtime.onInstalled.addListener(() => {
   resumePendingJobs();
+  repairUntitledSummaries().catch(() => {});
 });
 
 chrome.runtime.onStartup.addListener(() => {
   resumePendingJobs();
+  repairUntitledSummaries().catch(() => {});
 });
 
 chrome.alarms.create("resume-video-preview-jobs", {periodInMinutes: 1});

@@ -49,7 +49,7 @@
       hasTranscriptEndpoint: Boolean(transcriptEndpoint()),
       canFetchTranscript: Boolean(videoId && innerTubeContext()),
       title: details.title || document.title.replace(/\s*-\s*YouTube\s*$/, "") || null,
-      channel: details.author || null,
+      channel: details.author || document.querySelector?.("ytd-watch-metadata ytd-channel-name a, #owner #channel-name a")?.textContent?.trim() || null,
       durationSeconds: Number(details.lengthSeconds || 0) || null,
       captionTracks: tracks.map(track => ({
         baseUrl: track.baseUrl,

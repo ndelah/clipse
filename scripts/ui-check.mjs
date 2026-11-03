@@ -80,7 +80,7 @@ try {
   for (const theme of ["light", "dark"]) for (const width of [200, 320, 400, 600]) {
     const f = await fixture({summaries: {[A]: record(A), [B]: record(B)}}, theme, width);
     await layout(f.page);
-    assert.equal(await f.page.locator("#historyCount").textContent(), "2 saved");
+    assert.equal(await f.page.locator("#historyCount").textContent(), "");
     if (width === 400) await f.page.screenshot({path: path.join(output, `history-${theme}.png`), fullPage: true});
     await f.page.locator(".history-title").first().click();
     await f.page.locator("#fullSummarySection summary").click();
@@ -151,14 +151,15 @@ try {
     await p.locator(".job-failed .job-review").click();
     await p.locator("#discardErrorButton").click();
     assert.equal(await p.locator(".job-failed").count(), 0);
-    assert.equal(await p.locator("#historyCount").textContent(), "1 saved · 1 processing");
+    assert.equal(await p.locator("#historyCount").textContent(), "");
     await p.evaluate(() => fixture.emit("jobs", {...fixture.state.jobs, working: {...fixture.state.jobs.working, status: "cancelled"}}));
     await p.locator(".job-processing").waitFor({state: "detached"});
-    await p.locator(".history-delete").click();
+    await p.locator(".history-more").click();
+    await p.locator(".history-menu-item[data-action=delete]").click();
     await p.getByText("Your summarized videos will appear here.", {exact: true}).waitFor();
     await p.locator("#undoHistoryButton").click();
     await p.locator(".history-title").waitFor();
-    assert.equal(await p.locator("#historyCount").textContent(), "1 saved");
+    assert.equal(await p.locator("#historyCount").textContent(), "");
     assert.deepEqual(f.errors, []); checks += 11;
     await f.context.close();
   }
@@ -167,7 +168,7 @@ try {
   assert.equal(await p.locator("#historyView").isVisible(), true); checks += 1;
   assert.equal(await p.locator(".history-card").count(), 2);
   await p.locator(".history-title").first().click();
-  await p.locator("#fullSummarySection summary").click();
+  assert.equal(await p.locator("#fullSummarySection").evaluate(e => e.open), true);
   assert.equal(await p.locator("#takeawaysSection").evaluate(e => e.open), false);
   await p.locator("#takeawaysSection summary").click();
   await p.locator(".takeaway .timestamp").click();

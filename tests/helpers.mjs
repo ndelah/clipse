@@ -3,10 +3,16 @@ import {readFileSync} from "node:fs";
 import {webcrypto} from "node:crypto";
 import * as shared from "../extension/shared.js";
 import * as categories from "../extension/categories.js";
+import * as recipe from "../extension/recipe.js";
 import * as evidence from "../extension/evidence.js";
 import * as languages from "../extension/languages.js";
 import * as recovery from "../extension/recovery.js";
 import * as routing from "../extension/routing.js";
+import * as formats from "../extension/formats.js";
+import * as formatRender from "../extension/format-render.js";
+import * as markdown from "../extension/markdown.js";
+import * as obsidian from "../extension/obsidian.js";
+import * as notion from "../extension/notion.js";
 
 export const VIDEO_A = "abcdefghijk";
 export const VIDEO_B = "lmnopqrstuv";
@@ -23,7 +29,7 @@ export function storage(seed = {}) {
   return {state, async get(defaults = {}) { return structuredClone({...defaults, ...state}); }, async set(patch) { Object.assign(state, structuredClone(patch)); }, async setAccessLevel() {}};
 }
 export function scriptContext(filename, globals = {}) {
-  const context = vm.createContext({URL, console, setTimeout, clearTimeout, setInterval, clearInterval, AbortController, AbortSignal, DOMException, crypto: webcrypto, structuredClone, ...categories, ...routing, ...shared, ...evidence, ...languages, ...recovery, ...globals});
+  const context = vm.createContext({URL, console, setTimeout, clearTimeout, setInterval, clearInterval, AbortController, AbortSignal, DOMException, crypto: webcrypto, structuredClone, ...categories, ...formats, ...formatRender, ...markdown, ...obsidian, ...notion, ...routing, ...shared, ...recipe, ...evidence, ...languages, ...recovery, ...globals});
   const source = readFileSync(new URL(`../extension/${filename}`, import.meta.url), "utf8").replace(/^import .*;\n/gm, "").replace(/^export /gm, "");
   vm.runInContext(source, context, {filename});
   return context;

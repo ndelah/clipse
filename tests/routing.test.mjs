@@ -96,7 +96,7 @@ test("Jev receives one mixed request, and custom routing reaches section notes a
   assert.ok(!JSON.stringify(f.requests[0].body).includes("private"));
   assert.ok(f.requests.slice(1, -1).every(request => request.body.text.format.name === "video_section_notes"));
   assert.ok(f.requests.slice(1).every(request => request.body.instructions.includes("exact quantities and temperatures")));
-  assert.deepEqual(JSON.parse(JSON.stringify(f.requests.at(-1).body.text.format.schema.properties.content_type.enum)), ["Recipe"]);
+  assert.equal(f.requests.at(-1).body.text.format.schema.properties.content_type, undefined);
   assert.equal(preview.content_type, "Recipe");
   assert.equal(preview.classification.scores.prior_knowledge.score, 2);
 });
@@ -129,7 +129,8 @@ test("untouched old settings upgrade once while historical configurations retain
   assert.deepEqual(local.state.categories, DEFAULT_CATEGORIES);
   assert.equal(settings.apiKey, "saved-key");
   assert.equal(settings.summaryLength, "brief");
-  assert.deepEqual(savedConfiguration.categories, LEGACY_CATEGORIES);
+  assert.deepEqual(savedConfiguration.categories.map(({format, ...category}) => category), LEGACY_CATEGORIES);
+  assert.equal(savedConfiguration.categories.find(category => category.id === "tutorial").format, "article");
   assert.equal(sameConfiguration(savedConfiguration, settings), false);
   local.set = () => { throw new Error("Should not write settings again"); };
   assert.deepEqual((await loadSettings(local)).categories, DEFAULT_CATEGORIES);
@@ -167,7 +168,7 @@ for (const provider of ["openai", "jev"]) {
         assert.match(request.body.instructions, /important material from other formats/);
       }
       assert.equal(preview.content_type, "Recipes and cooking");
-      assert.deepEqual(Array.from(f.requests.at(-1).body.text.format.schema.properties.content_type.enum), ["Recipes and cooking"]);
+      assert.equal(f.requests.at(-1).body.text.format.schema.properties.content_type, undefined);
     });
   }
 }

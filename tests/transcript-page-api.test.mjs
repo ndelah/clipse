@@ -350,3 +350,18 @@ test("thumbnail cancellation is isolated by job and leaves player extraction alo
   assert.equal(second.signal.aborted, false);
   assert.equal(controller.signal.aborted, false);
 });
+
+test("extraction before the player loads reads captions by ID, otherwise reports the player as loading", async () => {
+  const f = contentFixture();
+  run(f.context, `latestContext = {videoId:'${VIDEO_A}',playerReady:false,captionTracks:[]}`);
+  const result = await f.extract();
+  assert.equal(result.segments[0].text, "Source caption.");
+  assert.equal(f.sent.find(message => message.type === "REQUEST_TRANSCRIPT_BY_ID").expectedVideoId, VIDEO_A);
+
+  const empty = contentFixture({noResponse: true});
+  run(empty.context, `latestContext = {videoId:'${VIDEO_A}',playerReady:false,captionTracks:[]}`);
+  const pending = empty.extract();
+  await settle();
+  for (const callback of empty.timers.keys()) callback();
+  await assert.rejects(pending, {code: "PLAYER_LOADING"});
+});

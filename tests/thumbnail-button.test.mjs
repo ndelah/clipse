@@ -10,7 +10,8 @@ function fixture({modern = false, videoId = VIDEO_A} = {}) {
       this.classList.remove = name => this.classList.toggle(name, false);
     }
     get isConnected() { return this.connected || Boolean(this.parentElement?.isConnected); }
-    append(...nodes) { for (const node of nodes) { node.parentElement = this; this.children.push(node); } }
+    append(...nodes) { for (const node of nodes) { node.remove(); node.parentElement = this; this.children.push(node); } }
+    getBoundingClientRect() { return this.rect || {left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0}; }
     remove() {
       if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(node => node !== this);
       this.parentElement = null;
@@ -30,25 +31,33 @@ function fixture({modern = false, videoId = VIDEO_A} = {}) {
   thumbnail.closest = () => modern ? link : null;
   card.querySelectorAll = () => [link];
   card.querySelector = selector => selector.startsWith("ytd-thumbnail") ? thumbnail : selector.startsWith("#video-title") ? title : null;
-  const events = {}, messages = [], timers = new Map(); let timerId = 0, mutation, live = true;
+  const events = {}, messages = [], timers = new Map(), observers = []; let timerId = 0, live = true;
+  const preview = new Node("ytd-video-preview"); preview.connected = true;
+  const document = {querySelector: selector => selector === "ytd-video-preview" ? preview : null,
+    querySelectorAll: () => card.connected ? [card] : [], createElement: tag => new Node(tag), addEventListener(name, fn) { events[name] = fn; }};
+  const observer = target => observers.find(entry => entry.target === target);
   let response = {ok: true}, status = "ready", pendingStart;
   scriptContext("thumbnail-button.js", {
     location: {href: "https://www.youtube.com/"},
-    document: {querySelectorAll: () => card.connected ? [card] : [], createElement: tag => new Node(tag), addEventListener(name, fn) { events[name] = fn; }},
+    document,
     chrome: {runtime: {getURL: path => `chrome-extension://test/${path}`}},
     runtimeIsAvailable: () => live,
     async safelySendRuntimeMessage(message) {
       messages.push(message);
       return message.type === "GET_THUMBNAIL_STATUS" ? {ok: true, status, stage: "Reading captions"} : pendingStart ? await pendingStart : response;
     },
-    MutationObserver: class {constructor(callback) { mutation = callback; } observe() {} disconnect() {}},
+    MutationObserver: class {
+      constructor(callback) { this.callback = callback; observers.push(this); }
+      observe(target) { this.target = target; } disconnect() { this.target = null; }
+    },
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; }, clearTimeout(id) { timers.delete(id); }
   });
   const host = modern ? card : thumbnail;
-  return {card, host, messages, timers,
+  return {card, host, preview, messages, timers,
     button: () => host.children.find(node => node.className === "clipse-thumbnail-button"),
     navigate() { events["yt-navigate-finish"](); },
-    recycle(id) { link.href = `https://www.youtube.com/watch?v=${id}`; mutation(); },
+    recycle(id) { link.href = `https://www.youtube.com/watch?v=${id}`; observer(document).callback(); },
+    showPreview(rect) { preview.rect = rect; observer(preview).callback(); },
     async tick() { for (const [id, callback] of [...timers]) { timers.delete(id); callback(); } await settle(); },
     setStatus(value) { status = value; }, setResponse(value) { response = value; },
     holdStart(promise) { pendingStart = promise; },
@@ -125,4 +134,19 @@ test("removed cards and invalidated extension contexts clean up buttons and poll
   invalid.invalidate();
   assert.equal(old.parentElement, null);
   assert.equal(invalid.host.classList.contains("clipse-thumbnail-host"), false);
+});
+
+test("the thumbnail action stays on top of YouTube's hover preview", () => {
+  const f = fixture(), button = f.button();
+  f.host.rect = {left: 100, top: 200, right: 400, bottom: 370, width: 300, height: 170};
+  f.showPreview({left: 96, top: 196, right: 404, bottom: 374, width: 308, height: 178});
+  assert.equal(button.parentElement, f.preview);
+  assert.equal(button.classList.contains("clipse-thumbnail-preview"), true);
+  assert.deepEqual([button.style.top, button.style.left], ["12px", "12px"]);
+  f.showPreview({left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0});
+  assert.equal(button.parentElement, f.host);
+  assert.equal(button.classList.contains("clipse-thumbnail-preview"), false);
+  assert.deepEqual([button.style.top, button.style.left], ["", ""]);
+  f.showPreview({left: 600, top: 196, right: 900, bottom: 374, width: 300, height: 178});
+  assert.equal(button.parentElement, f.host, "A preview over another card leaves this button alone");
 });
